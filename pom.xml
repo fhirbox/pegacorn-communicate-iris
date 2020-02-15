@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- JBoss, Home of Professional Open Source Copyright 2015, Red Hat, Inc. 
+	and/or its affiliates, and individual contributors by the @authors tag. See 
+	the copyright.txt in the distribution for a full listing of individual contributors. 
+	Licensed under the Apache License, Version 2.0 (the "License"); you may not 
+	use this file except in compliance with the License. You may obtain a copy 
+	of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required 
+	by applicable law or agreed to in writing, software distributed under the 
+	License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS 
+	OF ANY KIND, either express or implied. See the License for the specific 
+	language governing permissions and limitations under the License. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	
+	<parent>
+		<groupId>net.fhirbox.pegacorn</groupId>
+		<artifactId>pegacorn-communicate</artifactId>
+		<version>1.0.0-SNAPSHOT</version>
+		<relativePath>../pegacorn-communicate</relativePath>
+	</parent>
+
+	<artifactId>pegacorn-communicate-iris</artifactId>
+	<packaging>war</packaging>
+        
+	<name>Pegacorn :: Communicate :: Iris</name>
+	<description></description>
+
+	<url>http://pegacorn.fhirbox.net</url>
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<distribution>repo</distribution>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+		</license>
+	</licenses>
+
+	<scm>
+		<!--url>https://github.com/fhirbox/pegacorn-mitaf.git</url -->
+	</scm>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<dependencyManagement>
+            <dependencies>
+                    <!-- JBoss distributes a complete set of Jakarta EE 8 APIs including a 
+                            Bill of Materials (BOM). A BOM specifies the versions of a "stack" (or a 
+                            collection) of artifacts. We use this here so that we always get the correct 
+                            versions of artifacts. Here we use the wildfly-jakartaee-8.0-with-tools stack 
+                            (you can read this as the WildFly stack of the Jakarta EE 8 APIs, with some 
+                            extras tools for your project, such as Arquillian for testing) -->
+                <dependency>
+                    <groupId>org.wildfly.bom</groupId>
+                    <artifactId>wildfly-jakartaee8-with-tools</artifactId>
+                    <version>${version-org.wildfly}</version>
+                    <type>pom</type>
+                    <scope>import</scope>
+                </dependency>
+                <dependency>
+                        <groupId>org.apache.camel</groupId>
+                        <artifactId>camel-parent</artifactId>
+                        <version>${version-org.apache.camel}</version>
+                        <type>pom</type>
+                        <scope>import</scope>
+                </dependency>
+            </dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<!-- Pegacorn Deployment Information -->
+		<dependency>
+			<groupId>net.fhirbox.pegacorn</groupId>
+			<artifactId>pegacorn-deployment-properties</artifactId>
+			<version>${project.version}</version>
+			<type>jar</type>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>net.fhirbox.pegacorn</groupId>
+			<artifactId>pegacorn-references-library</artifactId>
+			<version>${project.version}</version>
+			<type>jar</type>
+			<scope>compile</scope>			
+		</dependency>
+		<!-- Provided -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-cdi</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jms</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-undertow</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-netty-http</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-servlet</artifactId>
+			<scope>runtime</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.tomcat.embed</groupId>
+					<artifactId>tomcat-embed-logging-juli</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<!-- dependency> <groupId>org.wildfly.camel</groupId> <artifactId>wildfly-camel-common</artifactId> 
+			</dependency> <dependency> <groupId>org.wildfly.camel</groupId> <artifactId>wildfly-camel-subsystem-undertow</artifactId> 
+			<exclusions> <exclusion> <groupId>org.apache.camel</groupId> <artifactId>camel-cxf</artifactId> 
+			</exclusion> </exclusions> </dependency> -->
+
+                <dependency>
+                    <groupId>org.jboss.msc</groupId>
+                    <artifactId>jboss-msc</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>javax.enterprise</groupId>
+                    <artifactId>cdi-api</artifactId>
+                    <version>${javax.enterprise.cdi-api.version}</version>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.spec.javax.ejb</groupId>
+                    <artifactId>jboss-ejb-api_3.2_spec</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.spec.javax.jms</groupId>
+                    <artifactId>jboss-jms-api_2.0_spec</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.spec.javax.servlet</groupId>
+                    <artifactId>jboss-servlet-api_4.0_spec</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.spec.javax.ws.rs</groupId>
+                    <artifactId>jboss-jaxrs-api_2.1_spec</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.spec.javax.annotation</groupId>
+                    <artifactId>jboss-annotations-api_1.3_spec</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.wildfly</groupId>
+                    <artifactId>wildfly-clustering-infinispan-extension</artifactId>
+                    <version>${version-org.wildfly}</version>
+                    <type>jar</type>
+                </dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-hl7</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-fhir</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>jcl-over-slf4j</artifactId>
+			<version>1.7.22</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<!-- This dependency includes the HAPI FHIR Server Framework -->
+		<dependency>
+			<groupId>ca.uhn.hapi.fhir</groupId>
+			<artifactId>hapi-fhir-server</artifactId>
+			<version>${version-ca.uhn.hapi.fhir}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>jcl-over-slf4j</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<!-- This dependency includes the core HAPI-FHIR classes -->
+		<dependency>
+			<groupId>ca.uhn.hapi.fhir</groupId>
+			<artifactId>hapi-fhir-base</artifactId>
+			<version>${version-ca.uhn.hapi.fhir}</version>
+		</dependency>
+
+		<!-- At least one "structures" JAR must also be included -->
+		<dependency>
+			<groupId>ca.uhn.hapi.fhir</groupId>
+			<artifactId>hapi-fhir-structures-r4</artifactId>
+			<version>${version-ca.uhn.hapi.fhir}</version>
+		</dependency>
+
+		<!-- Used for validation -->
+		<dependency>
+			<groupId>ca.uhn.hapi.fhir</groupId>
+			<artifactId>hapi-fhir-validation-resources-r4</artifactId>
+			<version>${version-ca.uhn.hapi.fhir}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.phloc</groupId>
+			<artifactId>phloc-schematron</artifactId>
+			<version>2.7.0</version>
+		</dependency>
+
+		<!-- HAPI-FHIR uses Logback for logging support. The logback library is 
+			included automatically by Maven as a part of the hapi-fhir-base dependency, 
+			but you also need to include a logging library. Logback is used here, but 
+			log4j would also be fine. -->
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.1.7</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>${commons-lang3-version}</version>
+		</dependency>
+
+		<!-- Infinispan -->
+
+		<dependency>
+			<groupId>org.infinispan</groupId>
+			<artifactId>infinispan-core</artifactId>
+			<scope>compile</scope>
+			<version>${version-org.infinispan}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.infinispan</groupId>
+			<artifactId>infinispan-commons</artifactId>
+			<scope>compile</scope>
+			<version>${version-org.infinispan}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.jgroups</groupId>
+			<artifactId>jgroups</artifactId>
+			<scope>compile</scope>
+			<version>4.0.20.Final</version>
+		</dependency>
+
+		<!-- To be bundled: JSON -->
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20190722</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<!-- logging -->
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-slf4j-impl</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-java</artifactId>
+			<scope>test</scope>
+			<version>2.44.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.opera</groupId>
+			<artifactId>operadriver</artifactId>
+			<scope>test</scope>
+			<version>1.5</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.seleniumhq.selenium</groupId>
+					<artifactId>selenium-remote-driver</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+			<version>4.11</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<!-- Tell Maven that the resulting file should not have a file name containing 
+			the version - a non versioned name is required e.g. when building a deployable 
+			artifact using the ShrinkWrap API -->
+		<finalName>${project.artifactId}</finalName>
+
+		<plugins>
+
+			<!--Build configuration for the WAR plugin: -->
+			<plugin>
+				<artifactId>maven-war-plugin</artifactId>
+				<version>${version-org.apache.maven.war.plugin}</version>
+				<configuration>
+					<!-- Jakarta EE doesn't require web.xml, Maven needs to catch up! -->
+					<failOnMissingWebXml>false</failOnMissingWebXml>
+				</configuration>
+			</plugin>
+
+			<!-- The WildFly plugin deploys your war to a local JBoss AS container -->
+			<plugin>
+				<groupId>org.wildfly.plugins</groupId>
+				<artifactId>wildfly-maven-plugin</artifactId>
+				<version>${version-org.wildfly.maven.plugin}</version>
+			</plugin>
+		</plugins>
+	</build>
+
+
+	<profiles>
+		<profile>
+			<!-- All the modules that require nothing but JBoss Enterprise Application 
+				Platform or JBoss EAP -->
+			<id>default</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+		</profile>
+
+		<profile>
+			<!-- An optional Arquillian testing profile that executes tests in your 
+				JBoss EAP instance. This profile will start a new JBoss EAP instance, and 
+				execute the test, shutting it down when done. Run with: mvn clean verify 
+				-Parq-managed -->
+			<id>arq-managed</id>
+			<dependencies>
+				<dependency>
+					<groupId>org.wildfly.arquillian</groupId>
+					<artifactId>wildfly-arquillian-container-managed</artifactId>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<version>${version.failsafe.plugin}</version>
+						<executions>
+							<execution>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<!-- Configuration for Arquillian: -->
+							<systemPropertyVariables>
+								<!-- Defines the container qualifier in "arquillian.xml" -->
+								<arquillian.launch>managed</arquillian.launch>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
+		<profile>
+			<!-- An optional Arquillian testing profile that executes tests in a remote 
+				JBoss EAP instance. Run with: mvn clean verify -Parq-remote -->
+			<id>arq-remote</id>
+			<dependencies>
+				<dependency>
+					<groupId>org.wildfly.arquillian</groupId>
+					<artifactId>wildfly-arquillian-container-remote</artifactId>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<version>${version.failsafe.plugin}</version>
+						<executions>
+							<execution>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<!-- Configuration for Arquillian: -->
+							<systemPropertyVariables>
+								<!-- Defines the container qualifier in "arquillian.xml" -->
+								<arquillian.launch>remote</arquillian.launch>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
+</project>
