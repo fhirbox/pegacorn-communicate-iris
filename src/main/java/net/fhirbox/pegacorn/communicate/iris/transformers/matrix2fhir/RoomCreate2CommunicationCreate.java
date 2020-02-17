@@ -17,37 +17,81 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.fhirbox.pegacorn.communicate.iris.transformers.helpers.IdentifierBuilders;
+import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import net.fhirbox.pegacorn.referencevalues.communication.PegacornCommunicateValueReferences;
-import net.fhirbox.pegacorn.workflow.events.EventAction;
+import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.MessageHeader;
 import org.hl7.fhir.r4.model.StringType;
+import org.json.JSONException;
 
 public class RoomCreate2CommunicationCreate {
 
     private static final Logger LOG = LoggerFactory.getLogger(RoomMessage2Communication.class);
 
     PegacornSystemReference pegacornSystemReference = new PegacornSystemReference();
-    EventAction eventAction = new EventAction();
     
-    @Inject 
+    CommunicateProperties communicateProperties = new CommunicateProperties();
+
+    @Inject
     IdentifierBuilders identifierBuilders;
+
     PegacornCommunicateValueReferences pegacornCommunicateValueReferences = new PegacornCommunicateValueReferences();
 
-	public Communication transformToCommunication(String theMessage) throws TransformErrorException {
-		LOG.debug(".transformToCommunication(): Entry, Message In --> " + theMessage);
-		Communication communicationElement = new Communication();
-		LOG.trace(".transformToCommunication(): Message to be converted --> " + theMessage);
-		try {
-			JSONObject roomStatusEvent = new JSONObject(theMessage);
-			communicationElement = buildAssociatedCommunicationEntity(roomStatusEvent);
-		} catch (Exception Ex ) {
-			Communication emptyCommunication = new Communication();
-			return(emptyCommunication);
-		}
-		return(communicationElement);
-	}
-        
+    public Bundle matrix2CommunicationBundle(String theMessage) throws TransformErrorException {
+        Bundle newBundleElement = new Bundle();
+        LOG.debug(".matrix2CommunicationBundle(): Message In --> " + theMessage);
+        Communication communicationElement = new Communication();
+        MessageHeader messageHeader = new MessageHeader();
+        LOG.trace(".matrix2CommunicationBundle(): Message to be converted --> " + theMessage);
+        try {
+            communicationElement = roomCreateEvent2Communication(theMessage);
+            messageHeader = matrix2MessageHeader(communicationElement, theMessage);
+            newBundleElement.setType(Bundle.BundleType.MESSAGE);
+            Bundle.BundleEntryComponent bundleEntryForMessageHeaderElement = new Bundle.BundleEntryComponent();
+            bundleEntryForMessageHeaderElement.setResource(messageHeader);
+            Bundle.BundleEntryComponent bundleEntryForCommunicationElement = new Bundle.BundleEntryComponent();
+            Bundle.BundleEntryRequestComponent bundleRequest = new Bundle.BundleEntryRequestComponent();
+            bundleRequest.setMethod(Bundle.HTTPVerb.POST);
+            bundleRequest.setUrl("Communication");
+            bundleEntryForCommunicationElement.setRequest(bundleRequest);
+            newBundleElement.addEntry(bundleEntryForMessageHeaderElement);
+            newBundleElement.addEntry(bundleEntryForCommunicationElement);
+            newBundleElement.setTimestamp(new Date());
+            return (newBundleElement);
+        } catch (JSONException jsonExtractionError) {
+            throw (new TransformErrorException("matrix2CommunicationBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
+        }
+    }
+
+    public MessageHeader matrix2MessageHeader(Communication theResultantCommunicationElement, String theMessage) {
+        MessageHeader messageHeaderElement = new MessageHeader();
+        Coding messageHeaderCode = new Coding();
+        messageHeaderCode.setSystem("http://pegacorn.fhirbox.net/pegacorn/R1/message-codes");
+        messageHeaderCode.setCode("communication-bundle");
+        messageHeaderElement.setEvent(messageHeaderCode);
+        MessageHeader.MessageSourceComponent messageSource = new MessageHeader.MessageSourceComponent();
+        messageSource.setName("Pegacorn Matrix2FHIR Integration Service");
+        messageSource.setSoftware("Pegacorn::Communicate::Iris");
+        messageSource.setEndpoint(communicateProperties.getIrisEndPointForIncomingCommunicationBundle());
+        return (messageHeaderElement);
+    }
+
+    public Communication roomCreateEvent2Communication(String theMessage) throws TransformErrorException {
+        LOG.debug(".roomCreateEvent2Communication(): Entry, Message In --> " + theMessage);
+        Communication communicationElement = new Communication();
+        LOG.trace(".roomCreateEvent2Communication(): Message to be converted --> " + theMessage);
+        try {
+            JSONObject roomStatusEvent = new JSONObject(theMessage);
+            communicationElement = buildAssociatedCommunicationEntity(roomStatusEvent);
+        } catch (Exception Ex) {
+            Communication emptyCommunication = new Communication();
+            return (emptyCommunication);
+        }
+        return (communicationElement);
+    }
+
     private Communication buildAssociatedCommunicationEntity(JSONObject pRoomServerEvent) {
         LOG.debug(".buildAssociatedCommunicationEntity() for Event --> " + pRoomServerEvent);
         LOG.trace(".buildAssociatedCommunicationEntity(): Create the empty FHIR::Communication entity.");
@@ -94,9 +138,7 @@ public class RoomCreate2CommunicationCreate {
         communicationEntity.setCategory(this.buildAssociatedCommunicationCategory(pRoomServerEvent));
         LOG.trace(".buildAssociatedCommunicationEntity(): Add EventAction to Extension");
         Extension eventActionExtension = new Extension();
-        eventActionExtension.setUrl(eventAction.getEventActionSystem());
-        eventActionExtension.setValue(new StringType(eventAction.getActionCreate()));
-        communicationEntity.addExtension(eventActionExtension);        
+        communicationEntity.addExtension(eventActionExtension);
         LOG.debug(".buildAssociatedCommunicationEntity(): Created Entity --> " + communicationEntity.toString());
         return (communicationEntity);
     }
@@ -119,7 +161,7 @@ public class RoomCreate2CommunicationCreate {
             LOG.debug("buildGroupIdentifier(): Room Event Message is Empty");
             return (null);
         }
-        LOG.trace("buildGroupIdentifier(): Event to be converted --> " +  pRoomEventMessage);
+        LOG.trace("buildGroupIdentifier(): Event to be converted --> " + pRoomEventMessage);
         String localRoomID = pRoomEventMessage.getString("room_id");
         if (localRoomID.isEmpty()) {
             LOG.debug("buildGroupIdentifier(): Room ID from RoomEvent is Empty");

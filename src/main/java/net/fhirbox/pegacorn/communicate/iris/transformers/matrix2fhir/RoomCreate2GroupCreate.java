@@ -48,26 +48,68 @@ import org.slf4j.LoggerFactory;
 
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import net.fhirbox.pegacorn.referencevalues.communication.PegacornCommunicateValueReferences;
+import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 
 import net.fhirbox.pegacorn.communicate.iris.transformers.helpers.IdentifierBuilders;
 import net.fhirbox.pegacorn.communicate.iris.transformers.TransformErrorException;
 import net.fhirbox.pegacorn.communicate.iris.transformers.TransformErrorException;
-import net.fhirbox.pegacorn.workflow.events.EventAction;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.MessageHeader;
 import org.hl7.fhir.r4.model.Patient;
+import org.json.JSONException;
 
 public class RoomCreate2GroupCreate {
 
     private static final Logger LOG = LoggerFactory.getLogger(RoomCreate2GroupCreate.class);
 
     PegacornSystemReference pegacornSystemReference = new PegacornSystemReference();
-    EventAction eventAction = new EventAction();
+    CommunicateProperties communicateProperties = new CommunicateProperties();
     
     @Inject
     IdentifierBuilders identifierBuilders;
     
     PegacornCommunicateValueReferences pegacornCommunicateValueReferences = new PegacornCommunicateValueReferences();
+    
+     public Bundle matrixRoomCreateEvent2FHIRGroupBundle(String theMessage) throws TransformErrorException {
+        Bundle newBundleElement = new Bundle();
+        LOG.debug(".matrixRoomCreateEvent2FHIRGroupBundle(): Message In --> " + theMessage);
+        Group groupElement = new Group();
+        MessageHeader messageHeader = new MessageHeader();
+        LOG.trace(".matrixRoomCreateEvent2FHIRGroupBundle(): Message to be converted --> " + theMessage);
+        try {
+            groupElement = roomCreateEvent2Group(theMessage);
+            messageHeader = matrix2MessageHeader(groupElement, theMessage);
+            newBundleElement.setType(Bundle.BundleType.MESSAGE);
+            Bundle.BundleEntryComponent bundleEntryForMessageHeaderElement = new Bundle.BundleEntryComponent();
+            bundleEntryForMessageHeaderElement.setResource(messageHeader);
+            Bundle.BundleEntryComponent bundleEntryForCommunicationElement = new Bundle.BundleEntryComponent();
+            Bundle.BundleEntryRequestComponent bundleRequest = new Bundle.BundleEntryRequestComponent();
+            bundleRequest.setMethod(Bundle.HTTPVerb.POST);
+            bundleRequest.setUrl("Group");
+            bundleEntryForCommunicationElement.setRequest(bundleRequest);
+            newBundleElement.addEntry(bundleEntryForMessageHeaderElement);
+            newBundleElement.addEntry(bundleEntryForCommunicationElement);
+            newBundleElement.setTimestamp(new Date());
+            return (newBundleElement);
+        } catch (JSONException jsonExtractionError) {
+            throw (new TransformErrorException("matrixRoomCreateEvent2FHIRGroupBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
+        }
+    }
+    
+    public MessageHeader matrix2MessageHeader(Group theResultantGroupElement, String theMessage) {
+        MessageHeader messageHeaderElement = new MessageHeader();
+        Coding messageHeaderCode = new Coding();
+        messageHeaderCode.setSystem("http://pegacorn.fhirbox.net/pegacorn/R1/message-codes");
+        messageHeaderCode.setCode("group-bundle");
+        messageHeaderElement.setEvent(messageHeaderCode);
+        MessageHeader.MessageSourceComponent messageSource = new MessageHeader.MessageSourceComponent();
+        messageSource.setName("Pegacorn Matrix2FHIR Integration Service");
+        messageSource.setSoftware("Pegacorn::Communicate::Iris");
+        messageSource.setEndpoint(communicateProperties.getIrisEndPointForIncomingGroupBundle());
+        return (messageHeaderElement);
+    }
 
-    public Group transformToGroup(String theMessage) throws TransformErrorException {
+    public Group roomCreateEvent2Group(String theMessage) throws TransformErrorException {
         LOG.debug(".doTransform(): Message In --> " + theMessage);
         Group localGroupElement = new Group();
         LOG.trace("Message to be converted --> " + theMessage);
@@ -158,11 +200,6 @@ public class RoomCreate2GroupCreate {
             }
             localGroupEntity.addMember(newGroupMember);
         }
-        LOG.trace(".buildGroupEntity(): Add EventAction to Extension");
-        Extension eventActionExtension = new Extension();
-        eventActionExtension.setUrl(eventAction.getEventActionSystem());
-        eventActionExtension.setValue(new StringType(eventAction.getActionCreate()));
-        localGroupEntity.addExtension(eventActionExtension); 
         LOG.debug(".buildDefaultGroupElement(): Created Identifier --> " + localGroupEntity.toString());
         return (localGroupEntity);
     }

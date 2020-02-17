@@ -20,34 +20,36 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import javax.inject.Inject;
+import org.json.JSONObject;
+import org.json.JSONException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.hl7.fhir.r4.model.Communication;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
-
 import org.hl7.fhir.r4.model.Communication.CommunicationPayloadComponent;
-import org.hl7.fhir.r4.model.Type;
 import org.hl7.fhir.r4.model.Period;
 import org.hl7.fhir.r4.model.Reference;
-import org.hl7.fhir.r4.model.Attachment;
 import org.hl7.fhir.r4.model.StringType;
-import org.hl7.fhir.r4.model.Media;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
+import org.hl7.fhir.r4.model.Bundle.BundleEntryRequestComponent;
+import org.hl7.fhir.r4.model.MessageHeader;
+import org.hl7.fhir.r4.model.Narrative;
+import org.hl7.fhir.r4.model.MessageHeader.MessageSourceComponent;
 
-import ca.uhn.fhir.context.FhirContext;
+import org.hl7.fhir.utilities.xhtml.XhtmlNode;
+
 import net.fhirbox.pegacorn.communicate.iris.transformers.TransformErrorException;
 import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.RoomID2ResourceReferenceMap;
 import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.UserID2PractitionerReferenceMap;
 import net.fhirbox.pegacorn.communicate.iris.transformers.helpers.IdentifierBuilders;
+import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
-import net.fhirbox.pegacorn.workflow.events.EventAction;
-import org.hl7.fhir.r4.model.Extension;
 
-import org.json.JSONObject;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <h1>Transform Room Based Message to a FHIR::Communication Resource</h1>
@@ -98,8 +100,9 @@ public class RoomMessage2Communication {
     private static final Logger LOG = LoggerFactory.getLogger(RoomMessage2Communication.class);
 
     PegacornSystemReference pegacornSystemReference = new PegacornSystemReference();
-    protected EventAction eventAction = new EventAction();
+    CommunicateProperties communicateProperties = new CommunicateProperties();
     
+
     @Inject
     IdentifierBuilders identifierBuilders;
     @Inject
@@ -107,6 +110,46 @@ public class RoomMessage2Communication {
     @Inject
     protected UserID2PractitionerReferenceMap theUserID2PractitionerIDMap;
 
+    public Bundle matrix2CommunicationBundle(String theMessage) throws TransformErrorException {
+        Bundle newBundleElement = new Bundle();
+        LOG.debug(".matrix2CommunicationBundle(): Message In --> " + theMessage);
+        Communication communicationElement = new Communication();
+        MessageHeader messageHeader = new MessageHeader();
+        LOG.trace(".matrix2CommunicationBundle(): Message to be converted --> " + theMessage);
+        try {
+            communicationElement = matrix2Communication(theMessage);
+            messageHeader = matrix2MessageHeader(communicationElement, theMessage);
+            newBundleElement.setType(Bundle.BundleType.MESSAGE);
+            BundleEntryComponent bundleEntryForMessageHeaderElement = new BundleEntryComponent();
+            bundleEntryForMessageHeaderElement.setResource(messageHeader);
+            BundleEntryComponent bundleEntryForCommunicationElement = new BundleEntryComponent();
+            BundleEntryRequestComponent bundleRequest = new BundleEntryRequestComponent();
+            bundleRequest.setMethod(Bundle.HTTPVerb.POST);
+            bundleRequest.setUrl("Communication");
+            bundleEntryForCommunicationElement.setRequest(bundleRequest);
+            newBundleElement.addEntry(bundleEntryForMessageHeaderElement);
+            newBundleElement.addEntry(bundleEntryForCommunicationElement);
+            newBundleElement.setTimestamp(new Date());
+            return (newBundleElement);
+        } catch (JSONException jsonExtractionError) {
+            throw (new TransformErrorException("matrix2CommunicationBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
+        }
+    }
+    
+    
+
+    public MessageHeader matrix2MessageHeader(Communication theResultantCommunicationElement, String theMessage) {
+        MessageHeader messageHeaderElement = new MessageHeader();
+        Coding messageHeaderCode = new Coding();
+        messageHeaderCode.setSystem("http://pegacorn.fhirbox.net/pegacorn/R1/message-codes");
+        messageHeaderCode.setCode("communication-bundle");
+        messageHeaderElement.setEvent(messageHeaderCode);
+        MessageSourceComponent messageSource = new MessageSourceComponent();
+        messageSource.setName("Pegacorn Matrix2FHIR Integration Service");
+        messageSource.setSoftware("Pegacorn::Communicate::Iris");
+        messageSource.setEndpoint(communicateProperties.getIrisEndPointForIncomingCommunicationBundle());
+        return (messageHeaderElement);
+    }
 
     /**
      * The method is the primary (exposed) method for performing the entity
@@ -119,20 +162,20 @@ public class RoomMessage2Communication {
      * https://www.hl7.org/fhir/communication.html)
      * @throws TransformErrorException
      */
-    public Communication doTransform(String theMessage) throws TransformErrorException {
-        LOG.debug(".doTransform(): Message In --> " + theMessage);
+    public Communication matrix2Communication(String theMessage) throws TransformErrorException {
+        LOG.debug(".matrix2Communication(): Message In --> " + theMessage);
         Communication localCommunicationEvent = new Communication();
-        LOG.trace("Message to be converted --> " + theMessage);
+        LOG.trace(".matrix2Communication(): Message to be converted --> " + theMessage);
         try {
             JSONObject localMessageEvent = new JSONObject(theMessage);
-            LOG.trace("Extracted Message from Events" + localMessageEvent.toString(2));
+            LOG.trace(".matrix2Communication(): Extracted Message from Events" + localMessageEvent.toString(2));
             JSONObject localMessageContent = localMessageEvent.getJSONObject("content");
-            LOG.trace("Extracted Content from Message" + localMessageContent.toString(2));
+            LOG.trace(".matrix2Communication(): Extracted Content from Message" + localMessageContent.toString(2));
             localCommunicationEvent = buildDefaultCommunicationEntity(localMessageEvent);
-            LOG.trace("Built default Communication entity");
+            LOG.trace(".matrix2Communication(): Built default Communication entity");
             switch (localMessageContent.getString("msgtype")) {
                 case "m.audio": {
-                    LOG.trace(".doTransform(): Message Type (msgtype) --> m.audio");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.audio");
                     List<CommunicationPayloadComponent> localPayloadList = new ArrayList<CommunicationPayloadComponent>();
                     CommunicationPayloadComponent localPayload = new CommunicationPayloadComponent();
                     List<Reference> localMediaEntityReferences = this.buildMediaReference(localMessageEvent);
@@ -143,15 +186,15 @@ public class RoomMessage2Communication {
                     break;
                 }
                 case "m.emote": {
-                    LOG.trace(".doTransform(): Message Type (msgtype) --> m.emote");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.emote");
                     break;
                 }
                 case "m.file": {
-                    LOG.trace(".doTransform(): Message Type (msgtype) --> m.file");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.file");
                     break;
                 }
                 case "m.image": {
-                    LOG.trace(".doTransform(): Message Type (msgtype --> m.image");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype --> m.image");
                     List<CommunicationPayloadComponent> localPayloadList = new ArrayList<CommunicationPayloadComponent>();
                     CommunicationPayloadComponent localPayload = new CommunicationPayloadComponent();
                     List<Reference> localMediaEntityReferences = this.buildMediaReference(localMessageEvent);
@@ -162,30 +205,30 @@ public class RoomMessage2Communication {
                     break;
                 }
                 case "m.location": {
-                    LOG.trace(".doTransform(): Message Type (msgtype) --> m.location");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.location");
                     break;
                 }
                 case "m.notice": {
-                    LOG.trace(".doTransform(): Message Type (msgtype) --> m.notice");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.notice");
                     break;
                 }
                 case "m.server_notice": {
-                    LOG.trace(".doTransform(): Message Type (msgtype) --> m.server_notice");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.server_notice");
                     break;
                 }
                 case "m.text": {
-                    LOG.trace(".doTransform(): Case --> Message Type (msgtype) == m.text: Start");
+                    LOG.trace(".matrix2Communication(): Case --> Message Type (msgtype) == m.text: Start");
                     List<CommunicationPayloadComponent> localPayloadList = this.buildMTextPayload(localMessageContent);
                     localCommunicationEvent.setPayload(localPayloadList);
                     Reference referredToCommunicationEvent = this.buildInResponseTo(localMessageContent);
-                    if( referredToCommunicationEvent != null ){
+                    if (referredToCommunicationEvent != null) {
                         localCommunicationEvent.addInResponseTo(referredToCommunicationEvent);
                     }
-                    LOG.trace(".doTransform(): Case --> Message Type (msgtype) == m.text: Finished");
+                    LOG.trace(".matrix2Communication(): Case --> Message Type (msgtype) == m.text: Finished");
                     break;
                 }
                 case "m.video": {
-                    LOG.trace(".doTransform(): Message Type (msgtype) --> m.video");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.video");
                     List<CommunicationPayloadComponent> localPayloadList = new ArrayList<CommunicationPayloadComponent>();
                     CommunicationPayloadComponent localPayload = new CommunicationPayloadComponent();
                     List<Reference> localMediaEntityReferences = this.buildMediaReference(localMessageEvent);
@@ -196,14 +239,14 @@ public class RoomMessage2Communication {
                     break;
                 }
                 default: {
-                    LOG.trace(".doTransform(): Message Type (msgtype) --> unknown");
+                    LOG.trace(".matrix2Communication(): Message Type (msgtype) --> unknown");
                     throw (new TransformErrorException("Unknown Message Type"));
                 }
             }
-            LOG.debug(".doTransform(): Created Communication Message --> " + localCommunicationEvent.toString());
+            LOG.debug(".matrix2Communication(): Created Communication Message --> " + localCommunicationEvent.toString());
             return (localCommunicationEvent);
         } catch (JSONException jsonExtractionError) {
-            throw (new TransformErrorException("Bad JSON Message Structure -> ", jsonExtractionError));
+            throw (new TransformErrorException("matrix2Communication(): Bad JSON Message Structure -> ", jsonExtractionError));
         }
     }
 
@@ -235,16 +278,16 @@ public class RoomMessage2Communication {
 
     private Reference buildInResponseTo(JSONObject pRoomMessageContent) {
         LOG.debug(".buildInResponseTo(): Entry, for Event --> " + pRoomMessageContent.toString());
-        if(!(pRoomMessageContent.has("m.relates_to"))){
-            return(null);
+        if (!(pRoomMessageContent.has("m.relates_to"))) {
+            return (null);
         }
         JSONObject referredToMessageContent = pRoomMessageContent.getJSONObject("m.relates_to");
-        if( !(referredToMessageContent.has("m.in_reply_to"))){
-            return(null);
+        if (!(referredToMessageContent.has("m.in_reply_to"))) {
+            return (null);
         }
         JSONObject referredToMessage = referredToMessageContent.getJSONObject("m.in_reply_to");
-        if( !(referredToMessage.has("event_id"))){
-            return(null);
+        if (!(referredToMessage.has("event_id"))) {
+            return (null);
         }
         Reference referredCommunicationMessage = new Reference();
         LOG.trace(".buildInResponseTo(): Create the empty FHIR::Identifier element");
@@ -279,6 +322,17 @@ public class RoomMessage2Communication {
         Communication localComMsg = new Communication();
         LOG.trace(".buildDefaultCommunicationMessage(): Add the FHIR::Communication.Identifier (type = FHIR::Identifier) Set");
         localComMsg.addIdentifier(this.buildCommunicationIdentifier(pMessageObject));
+        LOG.trace(".buildDefaultCommunicationMessage(): Add Id value (from the m.room.message::event_id");
+        localComMsg.setId(pMessageObject.getString("event_id"));
+        LOG.trace(".buildDefaultCommunicationMessage(): Add narrative of Communication Entity");
+        Narrative elementNarrative = new Narrative();
+        elementNarrative.setStatus(Narrative.NarrativeStatus.GENERATED);
+        XhtmlNode elementDiv = new XhtmlNode();
+        elementDiv.addDocType("xmlns=\\\"http://www.w3.org/1999/xhtml\"");
+        elementDiv.addText("<p> A message generate on the Pegacorn::Communicate::RoomServer platform </p>");
+        LOG.trace(".buildDefaultCommunicationMessage(): Narrative added --> " + elementDiv.getContent());
+        elementNarrative.setDiv(elementDiv);
+        localComMsg.setText(elementNarrative);
         LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.CommunicationStatus to COMPLETED (we don't chain)");
         localComMsg.setStatus(Communication.CommunicationStatus.COMPLETED);
         LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.CommunicationPriority to ROUTINE (we make no distinction - all are real-time)");
@@ -293,11 +347,6 @@ public class RoomMessage2Communication {
         localComMsg.setRecipient(this.buildRecipientReferenceSet(pMessageObject));
         LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.Recepient to the appropriate Category (Set)");
         localComMsg.setCategory(this.buildCommunicationCategory(pMessageObject));
-        LOG.trace(".buildDefaultCommunicationMessage(): Add EventAction to Extension");
-        Extension eventActionExtension = new Extension();
-        eventActionExtension.setUrl(eventAction.getEventActionSystem());
-        eventActionExtension.setValue(new StringType(eventAction.getActionCreate()));
-        localComMsg.addExtension(eventActionExtension);
         LOG.debug(".buildDefaultCommunicationMessage(): Created Identifier --> " + localComMsg.toString());
         return (localComMsg);
     }

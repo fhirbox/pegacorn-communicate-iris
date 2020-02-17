@@ -39,7 +39,6 @@ import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.RoomID2Reso
 import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.UserID2PractitionerReferenceMap;
 import net.fhirbox.pegacorn.communicate.iris.transformers.helpers.IdentifierBuilders;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
-import net.fhirbox.pegacorn.workflow.events.EventAction;
 import org.hl7.fhir.r4.model.Extension;
 
 import org.json.JSONObject;
@@ -96,18 +95,16 @@ public class Communication2RoomMessage {
     private static final Logger LOG = LoggerFactory.getLogger(Communication2RoomMessage.class);
 
     PegacornSystemReference pegacornSystemReference = new PegacornSystemReference();
-    protected EventAction eventAction = new EventAction();
-    
+
     FhirContext fhirContext = FhirContext.forR4();
     ca.uhn.fhir.parser.IParser fhirParser = this.fhirContext.newJsonParser();
-    
+
     @Inject
     IdentifierBuilders identifierBuilders;
     @Inject
     protected RoomID2ResourceReferenceMap theRoom2ReferenceIDMap;
     @Inject
     protected UserID2PractitionerReferenceMap theUserID2PractitionerIDMap;
-
 
     /**
      * The method is the primary (exposed) method for performing the entity
@@ -118,7 +115,7 @@ public class Communication2RoomMessage {
      * https://www.hl7.org/fhir/communication.html)
      * @return String A Matrix(R) "m.room.message" message (see
      * https://matrix.org/docs/spec/client_server/r0.6.0#room-event-fields)
-
+     *
      * @throws TransformErrorException
      */
     public List<JSONObject> doTransform(Communication pCommunicationEvent) throws TransformErrorException {
@@ -129,6 +126,7 @@ public class Communication2RoomMessage {
             LOG.trace("doTransform(): Create empty matrix room message");
             JSONObject newMatrixRoomMessage = new JSONObject();
             LOG.trace("doTransform(): Extract message content - check content/payload type");
+            /*
             switch (pCommunicationEvent.) {
                 case "m.audio": {
                     LOG.trace(".doTransform(): Message Type (msgtype) --> m.audio");
@@ -199,8 +197,11 @@ public class Communication2RoomMessage {
                     throw (new TransformErrorException("Unknown Message Type"));
                 }
             }
+             */
+
             LOG.debug(".doTransform(): Created Communication Message --> " + localCommunicationEvent.toString());
-            return (localCommunicationEvent);
+            ArrayList<JSONObject> messageList = new ArrayList<JSONObject>();
+            return (messageList);
         } catch (JSONException jsonExtractionError) {
             throw (new TransformErrorException("Bad JSON Message Structure -> ", jsonExtractionError));
         }
@@ -234,16 +235,16 @@ public class Communication2RoomMessage {
 
     private Reference buildInResponseTo(JSONObject pRoomMessageContent) {
         LOG.debug(".buildInResponseTo(): Entry, for Event --> " + pRoomMessageContent.toString());
-        if(!(pRoomMessageContent.has("m.relates_to"))){
-            return(null);
+        if (!(pRoomMessageContent.has("m.relates_to"))) {
+            return (null);
         }
         JSONObject referredToMessageContent = pRoomMessageContent.getJSONObject("m.relates_to");
-        if( !(referredToMessageContent.has("m.in_reply_to"))){
-            return(null);
+        if (!(referredToMessageContent.has("m.in_reply_to"))) {
+            return (null);
         }
         JSONObject referredToMessage = referredToMessageContent.getJSONObject("m.in_reply_to");
-        if( !(referredToMessage.has("event_id"))){
-            return(null);
+        if (!(referredToMessage.has("event_id"))) {
+            return (null);
         }
         Reference referredCommunicationMessage = new Reference();
         LOG.trace(".buildInResponseTo(): Create the empty FHIR::Identifier element");
@@ -292,11 +293,6 @@ public class Communication2RoomMessage {
         localComMsg.setRecipient(this.buildRecipientReferenceSet(pMessageObject));
         LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.Recepient to the appropriate Category (Set)");
         localComMsg.setCategory(this.buildCommunicationCategory(pMessageObject));
-        LOG.trace(".buildDefaultCommunicationMessage(): Add EventAction to Extension");
-        Extension eventActionExtension = new Extension();
-        eventActionExtension.setUrl(eventAction.getEventActionSystem());
-        eventActionExtension.setValue(new StringType(eventAction.getActionCreate()));
-        localComMsg.addExtension(eventActionExtension);
         LOG.debug(".buildDefaultCommunicationMessage(): Created Identifier --> " + localComMsg.toString());
         return (localComMsg);
     }

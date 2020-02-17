@@ -59,13 +59,13 @@ public class FHIREvents2Matrix extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        if(getContext().hasComponent("jms") == null) {
+/*        if(getContext().hasComponent("jms") == null) {
             JmsComponent component = new JmsComponent();
             component.setConnectionFactory(connectionFactory);
             getContext().addComponent("jms", component);
         }
 
         LOG.info("Iris Room Event (Iris --> RoomServer) Endpoint = " + deploymentProperties.getRoomServerEndPointForIrisEvent());
-
-    }
+*/
+    } 
 }
