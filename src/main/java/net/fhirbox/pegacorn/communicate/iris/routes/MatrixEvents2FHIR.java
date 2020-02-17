@@ -109,10 +109,10 @@ public class MatrixEvents2FHIR extends RouteBuilder {
             getContext().addComponent("jms", component);
         }
 
-        LOG.info("Iris Room Event (RoomServer --> Iris) Endpoint = " + deploymentProperties.getIrisEndPointForRoomServerEvent());
+        LOG.info(".configure(): Iris Room Event (RoomServer --> Iris) Endpoint = " + deploymentProperties.getIrisEndPointForRoomServerEvent());
         
         from(deploymentProperties.getIrisEndPointForRoomServerEvent())
-                .routeId("MatrixEvents2FHIR-RoomServer2Iris-Route")
+                .routeId("MatrixEvents2FHIR-RoomServer2Iris-Route -->")
                 .transform(simple("${bodyAs(String)}"))
                 .log(LoggingLevel.DEBUG, "Message received!!!")
                 .bean(messageValidator, "validateEventSetMessage")
@@ -142,7 +142,7 @@ public class MatrixEvents2FHIR extends RouteBuilder {
         from(EVENT_M_ROOM_MESSAGE)
                 .routeId("MatrixEvents2FHIR-m_room_message-Route")
                 .log(LoggingLevel.INFO,"m.room.message --> ${body}")
-                .bean(roomMessage2Communication, "doTransform")
+                .bean(roomMessage2Communication, "matrix2CommunicationBundle")
                 .multicast().parallelProcessing()
                     .to(RECIPIENT_IS_A_PRACTIONER, RECIPIENT_IS_A_PRACTROLE, RECIPIENT_IS_A_CARETEAM, RECIPIENT_IS_A_ORGANIZATION, RECIPIENT_IS_A_GROUP, RECIPIENT_IS_UNKNOWN)
                     .end()
@@ -151,7 +151,7 @@ public class MatrixEvents2FHIR extends RouteBuilder {
         from(EVENT_M_ROOM_NAME)
                 .routeId("MatrixEvents2FHIR-m_room_name-Route")
                 .log(LoggingLevel.INFO,"m.room.name --> ${body}")
-                .bean(roomName2Group, "transformToGroup")
+                .bean(roomName2Group, "matrixRoomNameEvent2FHIRGroupBundle")
                 .to(deploymentProperties.getRawGroupTopic());
                 
         from(EVENT_M_ROOM_ALIASES)
@@ -239,12 +239,12 @@ public class MatrixEvents2FHIR extends RouteBuilder {
     // routes for Processing Room Events --> m.room.create
         from(EVENT_ROOM_CREATE_TO_COMMUNICATION)
                 .routeId("MatrixEvents2FHIR-m.room.create2Communication-Route")
-                .bean(roomState2Communication, "transformToCommunication")
+                .bean(roomState2Communication, "matrix2CommunicationBundle")
                 .to(deploymentProperties.getRawCommunicationTopic());
         
         from(EVENT_ROOM_CREATE_TO_GROUP)
                 .routeId("MatrixEvents2FHIR-m.room.create2Group-Route")
-                .bean(roomState2Group, "transformToGroup")
+                .bean(roomState2Group, "matrixRoomCreateEvent2FHIRGroupBundle")
                 .to(deploymentProperties.getRawGroupTopic());
     
     }

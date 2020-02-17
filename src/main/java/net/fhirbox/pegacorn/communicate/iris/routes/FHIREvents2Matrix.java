@@ -33,30 +33,6 @@ public class FHIREvents2Matrix extends RouteBuilder {
 
     protected CommunicateProperties deploymentProperties = new CommunicateProperties();
 
-    @Inject
-    RoomMessage2Communication roomMessage2Communication;
-
-    @Inject
-    CommunicationSubjectTypeCheck communicationSubjectCheck;
-
-    @Inject
-    IncomingEventListValidator messageValidator;
-
-    @Inject
-    RoomServerMessageSplitter roomServerMessageSplitter;
-
-    @Inject
-    RoomCreate2CommunicationCreate roomState2Communication;
-
-    @Inject
-    RoomCreate2GroupCreate roomState2Group;
-
-    @Inject
-    RoomInfoName2Group roomName2Group;
-
-    @Resource(mappedName = "java:jboss/DefaultJMSConnectionFactory")
-    protected ConnectionFactory connectionFactory;
-
     @Override
     public void configure() throws Exception {
 /*        if(getContext().hasComponent("jms") == null) {

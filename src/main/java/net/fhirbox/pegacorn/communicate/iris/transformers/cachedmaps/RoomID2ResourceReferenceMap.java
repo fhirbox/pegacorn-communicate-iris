@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory;
 public class RoomID2ResourceReferenceMap {
 
     private static final Logger LOG = LoggerFactory.getLogger(RoomID2ResourceReferenceMap.class);
+    
     @Inject
     DefaultCacheManager theCommunicateCacheContainer;
 

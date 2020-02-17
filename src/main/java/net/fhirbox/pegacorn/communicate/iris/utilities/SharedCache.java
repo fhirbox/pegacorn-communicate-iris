@@ -22,6 +22,7 @@ import org.infinispan.configuration.cache.CacheMode;
 public class SharedCache {
  
     private static final long ENTRY_LIFESPAN = 7 * 24 * 60 * 60 * 1000; // 7 Days
+    
     private DefaultCacheManager shareCacheManager;
  
     public DefaultCacheManager getCacheManager() {

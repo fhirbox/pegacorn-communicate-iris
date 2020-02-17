@@ -127,6 +127,7 @@ public class RoomMessage2Communication {
             bundleRequest.setMethod(Bundle.HTTPVerb.POST);
             bundleRequest.setUrl("Communication");
             bundleEntryForCommunicationElement.setRequest(bundleRequest);
+            bundleEntryForCommunicationElement.setResource(communicationElement);
             newBundleElement.addEntry(bundleEntryForMessageHeaderElement);
             newBundleElement.addEntry(bundleEntryForCommunicationElement);
             newBundleElement.setTimestamp(new Date());

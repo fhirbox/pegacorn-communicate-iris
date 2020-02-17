@@ -259,7 +259,7 @@ language governing permissions and limitations under the License. -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20190722</version>
+            <version>${version-org.json}</version>
             <scope>compile</scope>
         </dependency>
 

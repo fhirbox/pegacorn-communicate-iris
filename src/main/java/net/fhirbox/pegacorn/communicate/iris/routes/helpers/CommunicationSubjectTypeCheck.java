@@ -13,6 +13,10 @@ import org.slf4j.LoggerFactory;
 import net.fhirbox.pegacorn.communicate.iris.transformers.matrix2fhir.RoomMessage2Communication;
 
 import java.util.List;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
+import org.hl7.fhir.r4.model.Bundle.BundleType;
+import org.hl7.fhir.r4.model.ResourceType;
 
 /**
  *
@@ -20,11 +24,35 @@ import java.util.List;
  */
 public class CommunicationSubjectTypeCheck {
 	private static final Logger LOG = LoggerFactory.getLogger(CommunicationSubjectTypeCheck.class);
+        
+    public Communication getCommunicationElementFromBundle( Bundle theBundle ){
+        if( !theBundle.hasType()){
+            return(null);
+        }
+        if( !(theBundle.getType() == BundleType.MESSAGE) ){
+            return(null);
+        }
+        if( theBundle.getTotal() < 2 ){
+            return(null);
+        }
+        List<BundleEntryComponent> bundleElements = theBundle.getEntry();
+        for( int counter = 0; counter < bundleElements.size(); counter += 1){
+            BundleEntryComponent testBundle = bundleElements.get(counter);
+            if( testBundle.hasResource()){
+                if( testBundle.getResource().getResourceType() == ResourceType.Communication){
+                    Communication communicationElement = (Communication)(testBundle.getResource());
+                    return(communicationElement);
+                }
+            }
+        }
+        return(null);
+    }    
 
-    public boolean isSubjectAPractitioner( Communication pCommunication )
+    public boolean isSubjectAPractitioner( Bundle pBundle )
     {
-    	LOG.debug("isSubjectAPractitioner(): Communication Element --> " + pCommunication.toString());
-    	Reference localCommunicationSubject = pCommunication.getSubject();
+    	LOG.debug("isSubjectAPractitioner(): Bundle Element --> " + pBundle.toString());
+        Communication communicationElement = getCommunicationElementFromBundle(pBundle);
+    	Reference localCommunicationSubject = communicationElement.getSubject();
         if(localCommunicationSubject == null){
         	LOG.debug("isSubjectAPractitioner(): The Subject of the Communication Element is null");
             return(false);
@@ -39,10 +67,11 @@ public class CommunicationSubjectTypeCheck {
         }
     }
     
-    public boolean isSubjectAPractitionerRole( Communication pCommunication )
+    public boolean isSubjectAPractitionerRole( Bundle pBundle )
     {
-    	LOG.debug("isSubjectAPractitionerRole(): Communication Element --> " + pCommunication.toString());
-    	Reference localCommunicationSubject = pCommunication.getSubject();
+    	LOG.debug("isSubjectAPractitionerRole(): Bundle Element --> " + pBundle.toString());
+        Communication communicationElement = getCommunicationElementFromBundle(pBundle);
+    	Reference localCommunicationSubject = communicationElement.getSubject();
         if(localCommunicationSubject == null){
         	LOG.debug("isSubjectAPractitionerRole(): The Subject of the Communication Element is null");
             return(false);
@@ -57,10 +86,11 @@ public class CommunicationSubjectTypeCheck {
         }
     }    
     
-    public boolean isSubjectACareTeam( Communication pCommunication )
+    public boolean isSubjectACareTeam( Bundle pBundle )
     {
-    	LOG.debug("isSubjectACareTeam(): Communication Element --> " + pCommunication.toString());
-    	Reference localCommunicationSubject = pCommunication.getSubject();
+    	LOG.debug("isSubjectACareTeam(): Bundle Element --> " + pBundle.toString());
+        Communication communicationElement = getCommunicationElementFromBundle(pBundle);
+    	Reference localCommunicationSubject = communicationElement.getSubject();
         if(localCommunicationSubject == null){
         	LOG.debug("isSubjectACareTeam(): The Subject of the Communication Element is null");
             return(false);
@@ -75,10 +105,11 @@ public class CommunicationSubjectTypeCheck {
         }
     }    
     
-    public boolean isSubjectAOrganization( Communication pCommunication )
+    public boolean isSubjectAOrganization( Bundle pBundle )
     {
-    	LOG.debug("isSubjectAOrganization(): Communication Element --> " + pCommunication.toString());
-    	Reference localCommunicationSubject = pCommunication.getSubject();
+    	LOG.debug("isSubjectAOrganization(): Bundle Element --> " + pBundle.toString());
+        Communication communicationElement = getCommunicationElementFromBundle(pBundle);
+    	Reference localCommunicationSubject = communicationElement.getSubject();
         if(localCommunicationSubject == null){
         	LOG.debug("isSubjectAOrganization(): The Subject of the Communication Element is null");
             return(false);
@@ -93,10 +124,11 @@ public class CommunicationSubjectTypeCheck {
         }
     }    
 
-    public boolean isSubjectAGroup( Communication pCommunication )
+    public boolean isSubjectAGroup( Bundle pBundle )
     {
-    	LOG.debug("isSubjectAGroup(): Communication Element --> " + pCommunication.toString());
-    	Reference localCommunicationSubject = pCommunication.getSubject();
+    	LOG.debug("isSubjectAGroup(): Bundle Element --> " + pBundle.toString());
+        Communication communicationElement = getCommunicationElementFromBundle(pBundle);
+    	Reference localCommunicationSubject = communicationElement.getSubject();
         if(localCommunicationSubject == null){
         	LOG.debug("isSubjectAGroup(): The Subject of the Communication Element is null");
             return(false);
@@ -111,10 +143,11 @@ public class CommunicationSubjectTypeCheck {
         }
     }      
     
-    public boolean isSubjectAnOther( Communication pCommunication )
+    public boolean isSubjectAnOther( Bundle pBundle )
     {
-    	LOG.debug("isSubjectAnOther(): Communication Element --> " + pCommunication.toString());
-    	Reference localCommunicationSubject = pCommunication.getSubject();
+    	LOG.debug("isSubjectAnOther(): Bundle Element --> " + pBundle.toString());
+        Communication communicationElement = getCommunicationElementFromBundle(pBundle);
+    	Reference localCommunicationSubject = communicationElement.getSubject();
         if(localCommunicationSubject == null){
         	LOG.debug("isSubjectAGroup(): The Subject of the Communication Element is null");
             return(true);
