@@ -15,6 +15,8 @@
  */
 package net.fhirbox.pegacorn.communicate.iris.transformers.matrix2fhir;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
 import java.util.ArrayList;
 
 import java.util.Date;
@@ -44,9 +46,9 @@ import org.hl7.fhir.r4.model.MessageHeader.MessageSourceComponent;
 import org.hl7.fhir.utilities.xhtml.XhtmlNode;
 
 import net.fhirbox.pegacorn.communicate.iris.transformers.TransformErrorException;
-import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.RoomID2ResourceReferenceMap;
-import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.UserID2PractitionerReferenceMap;
-import net.fhirbox.pegacorn.communicate.iris.transformers.helpers.IdentifierBuilders;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps.MatrxUserID2PractitionerIDMap;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.helpers.IdentifierBuilders;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 
@@ -64,11 +66,11 @@ import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
  * FHIR::Communication.Subject) - it then needs to extract the content type and
  * encapsulate it into the FHIR::Communication.payload attribute.
  * <p>
- * The Reference for the FHIR::Communication.Subject and
- * FHIR::Communication.Recipient are extracted from a RoomID-ReferenceMap
- * maintained in the AppServers shared memory cache (see
- * RoomID2ResourceReferenceMap.java).
- * <p>
+ The Reference for the FHIR::Communication.Subject and
+ FHIR::Communication.Recipient are extracted from a RoomID-ReferenceMap
+ maintained in the AppServers shared memory cache (see
+ MatrixRoomID2ResourceReferenceMap.java).
+ <p>
  * <b> Note: </b> If the content within the message is video ("m.video"), audio
  * ("m.audio") or image ("m.image") the a discrete FHIR::Media resource is
  * created and the FHIR::Communication.payload attribute is set to point (via a
@@ -106,13 +108,16 @@ public class RoomMessage2Communication {
     @Inject
     IdentifierBuilders identifierBuilders;
     @Inject
-    protected RoomID2ResourceReferenceMap theRoom2ReferenceIDMap;
+    protected MatrixRoomID2ResourceReferenceMap theRoom2ReferenceIDMap;
     @Inject
-    protected UserID2PractitionerReferenceMap theUserID2PractitionerIDMap;
+    protected MatrxUserID2PractitionerIDMap theUserID2PractitionerIDMap;
 
     public Bundle matrix2CommunicationBundle(String theMessage) throws TransformErrorException {
         Bundle newBundleElement = new Bundle();
         LOG.debug(".matrix2CommunicationBundle(): Message In --> " + theMessage);
+        FhirContext fhirContextHandle = FhirContext.forR4();
+        IParser fhirResourceParser = fhirContextHandle.newJsonParser();
+        fhirResourceParser.setPrettyPrint(true);
         Communication communicationElement = new Communication();
         MessageHeader messageHeader = new MessageHeader();
         LOG.trace(".matrix2CommunicationBundle(): Message to be converted --> " + theMessage);
@@ -131,6 +136,7 @@ public class RoomMessage2Communication {
             newBundleElement.addEntry(bundleEntryForMessageHeaderElement);
             newBundleElement.addEntry(bundleEntryForCommunicationElement);
             newBundleElement.setTimestamp(new Date());
+            LOG.trace(".matrix2CommunicationBundle(): Created Bundle --> " + fhirResourceParser.encodeResourceToString(newBundleElement));
             return (newBundleElement);
         } catch (JSONException jsonExtractionError) {
             throw (new TransformErrorException("matrix2CommunicationBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
@@ -329,11 +335,11 @@ public class RoomMessage2Communication {
         Narrative elementNarrative = new Narrative();
         elementNarrative.setStatus(Narrative.NarrativeStatus.GENERATED);
         XhtmlNode elementDiv = new XhtmlNode();
-        elementDiv.addDocType("xmlns=\\\"http://www.w3.org/1999/xhtml\"");
-        elementDiv.addText("<p> A message generate on the Pegacorn::Communicate::RoomServer platform </p>");
-        LOG.trace(".buildDefaultCommunicationMessage(): Narrative added --> " + elementDiv.getContent());
-        elementNarrative.setDiv(elementDiv);
-        localComMsg.setText(elementNarrative);
+//        elementDiv.addDocType("xmlns=\\\"http://www.w3.org/1999/xhtml\"");
+//        elementDiv.addText("<p> A message generate on the Pegacorn::Communicate::RoomServer platform </p>");
+//        LOG.trace(".buildDefaultCommunicationMessage(): Narrative added --> " + elementDiv.getContent());
+//        elementNarrative.setDiv(elementDiv);
+//        localComMsg.setText(elementNarrative);
         LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.CommunicationStatus to COMPLETED (we don't chain)");
         localComMsg.setStatus(Communication.CommunicationStatus.COMPLETED);
         LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.CommunicationPriority to ROUTINE (we make no distinction - all are real-time)");
@@ -409,8 +415,7 @@ public class RoomMessage2Communication {
         Reference localSenderReference = new Reference();
         // Get the associated Practitioner::Identifier from the RoomServer.UserID
         // (sender)
-        Identifier localSenderIdentifier = this.theUserID2PractitionerIDMap
-                .getFHIRResourceIdentifier(pRoomServerMessage.getString("sender"));
+        Identifier localSenderIdentifier = this.theUserID2PractitionerIDMap.getPractitionerIDFromUserName(pRoomServerMessage.getString("sender"));
         // If there is no associated Practitioner::Identifier, create one.
         if (localSenderIdentifier == null) {
             LOG.trace("buildSenderReference(): No Mapped Identifier, creating temporary one");
@@ -442,10 +447,10 @@ public class RoomMessage2Communication {
      * <p>
      * In this release, only a single Recipient is expected and managed.
      * <p>
-     * The method extracts the RoomServer.RoomID from the RoomServer.RoomMessage
-     * and attempts to find the corresponding FHIR::Reference in the
-     * RoomID2ResourceReferenceMap cache map.
-     * <p>
+ The method extracts the RoomServer.RoomID from the RoomServer.RoomMessage
+ and attempts to find the corresponding FHIR::Reference in the
+ MatrixRoomID2ResourceReferenceMap cache map.
+ <p>
      * The resulting single FHIR::Reference is then added to a
      * List<FHIR::Reference>
      * and returned. If no Reference is found, then an empty set is returned.
@@ -460,8 +465,7 @@ public class RoomMessage2Communication {
         // Create the empty List<Reference> set
         List<Reference> localRecipientReferenceSet = new ArrayList<Reference>();
         // Get the associated Reference from the RoomServer.RoomID ("room_id")
-        Reference localRecipientReference = theRoom2ReferenceIDMap
-                .getFHIRResourceReference(pRoomServerMessage.getString("room_id"));
+        Reference localRecipientReference = theRoom2ReferenceIDMap.getFHIRResourceReferenceFromRoomID(pRoomServerMessage.getString("room_id"));
         // If there are no References associated to the RoomServer.RoomID, return an
         // empty set.
         if (localRecipientReference == null) {
@@ -480,10 +484,10 @@ public class RoomMessage2Communication {
      * <p>
      * There is only a single Subject (which may be a FHIR::Group).
      * <p>
-     * The method extracts the RoomMessage.RoomID (i.e. "room_id") and attempts
-     * to find the corresponding FHIR::Reference in the
-     * RoomID2ResourceReferenceMap cache map.
-     * <p>
+ The method extracts the RoomMessage.RoomID (i.e. "room_id") and attempts
+ to find the corresponding FHIR::Reference in the
+ MatrixRoomID2ResourceReferenceMap cache map.
+ <p>
      * The resulting single FHIR::Reference is then returned. If no Reference is
      * found, then an new (non-conanical) one is created that points to a
      * FHIR::Group.
@@ -496,8 +500,7 @@ public class RoomMessage2Communication {
     private Reference buildSubjectReference(JSONObject pRoomServerMessage) {
         LOG.debug(".buildSubjectReference(): for Room ID --> " + pRoomServerMessage.getString("room_id"));
         // Get the associated Reference from the RoomServer.RoomID ("room_id")
-        Reference localSubjectReference = theRoom2ReferenceIDMap
-                .getFHIRResourceReference(pRoomServerMessage.getString("room_id"));
+        Reference localSubjectReference = theRoom2ReferenceIDMap.getFHIRResourceReferenceFromRoomID(pRoomServerMessage.getString("room_id"));
         // If there is a References associated to the RoomServer.RoomID, return it.
         if (localSubjectReference != null) {
             LOG.debug("buildSubjectReference(): Mapped Reference Found --> " + localSubjectReference.toString());

@@ -50,7 +50,7 @@ import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import net.fhirbox.pegacorn.referencevalues.communication.PegacornCommunicateValueReferences;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 
-import net.fhirbox.pegacorn.communicate.iris.transformers.helpers.IdentifierBuilders;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.helpers.IdentifierBuilders;
 import net.fhirbox.pegacorn.communicate.iris.transformers.TransformErrorException;
 import net.fhirbox.pegacorn.communicate.iris.transformers.TransformErrorException;
 import org.hl7.fhir.r4.model.Bundle;

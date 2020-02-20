@@ -1,4 +1,4 @@
-package net.fhirbox.pegacorn.communicate.iris.transformers.helpers;
+package net.fhirbox.pegacorn.communicate.iris.transformers.common.helpers;
 
 import java.util.Date;
 import javax.enterprise.context.ApplicationScoped;
@@ -6,7 +6,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.UserID2PractitionerReferenceMap;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps.MatrxUserID2PractitionerIDMap;
 
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Period;
@@ -23,7 +23,7 @@ public class IdentifierBuilders {
     PegacornSystemReference pegacornSystemReference = new PegacornSystemReference();
     
     @Inject
-    protected UserID2PractitionerReferenceMap theUserID2PractitionerIDMap;
+    protected MatrxUserID2PractitionerIDMap theUserID2PractitionerIDMap;
 
     public Identifier buildPractitionerIdentifierFromSender(String pSenderID) {
         LOG.debug("buildPractitionerIdentifierFromSender(): Entry, pSenderID --> " + pSenderID);
@@ -34,7 +34,7 @@ public class IdentifierBuilders {
         if( this.theUserID2PractitionerIDMap == null){
             LOG.debug("buildPractitionerIdentifierFromSender(): Something is wrong with the UserID2PractitionerID map");
         }
-        Identifier localSenderIdentifier = this.theUserID2PractitionerIDMap.getFHIRResourceIdentifier(pSenderID);
+        Identifier localSenderIdentifier = this.theUserID2PractitionerIDMap.getPractitionerIDFromUserName(pSenderID);
         LOG.trace("buildPractitionerIdentifierFromSender(): looked up the UserID2PractitionerIDMap");
         if (localSenderIdentifier != null) {
             LOG.debug("buildPractitionerIdentifierFromSender(): found valid Identifier in IDMap --> " + localSenderIdentifier.toString() );

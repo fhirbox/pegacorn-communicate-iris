@@ -152,7 +152,8 @@ public class MatrixEvents2FHIR extends RouteBuilder {
                 .routeId("MatrixEvents2FHIR-m_room_name-Route")
                 .log(LoggingLevel.INFO,"m.room.name --> ${body}")
                 .bean(roomName2Group, "matrixRoomNameEvent2FHIRGroupBundle")
-                .to(deploymentProperties.getRawGroupTopic());
+                .to(deploymentProperties.getRawGroupTopic())
+                .end();
                 
         from(EVENT_M_ROOM_ALIASES)
                 .routeId("MatrixEvents2FHIR-m_room_aliases-Route")

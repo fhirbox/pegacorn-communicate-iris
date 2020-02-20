@@ -35,9 +35,9 @@ import org.hl7.fhir.r4.model.StringType;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.context.FhirVersionEnum;
 import net.fhirbox.pegacorn.communicate.iris.transformers.TransformErrorException;
-import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.RoomID2ResourceReferenceMap;
-import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.UserID2PractitionerReferenceMap;
-import net.fhirbox.pegacorn.communicate.iris.transformers.helpers.IdentifierBuilders;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps.MatrxUserID2PractitionerIDMap;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.helpers.IdentifierBuilders;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import org.hl7.fhir.r4.model.Extension;
 
@@ -59,11 +59,11 @@ import org.slf4j.LoggerFactory;
  * FHIR::Communication.Subject) - it then needs to extract the content type and
  * encapsulate it into the FHIR::Communication.payload attribute.
  * <p>
- * The Reference for the FHIR::Communication.Subject and
- * FHIR::Communication.Recipient are extracted from a RoomID-ReferenceMap
- * maintained in the AppServers shared memory cache (see
- * RoomID2ResourceReferenceMap.java).
- * <p>
+ The Reference for the FHIR::Communication.Subject and
+ FHIR::Communication.Recipient are extracted from a RoomID-ReferenceMap
+ maintained in the AppServers shared memory cache (see
+ MatrixRoomID2ResourceReferenceMap.java).
+ <p>
  * <b> Note: </b> If the content within the message is video ("m.video"), audio
  * ("m.audio") or image ("m.image") the a discrete FHIR::Media resource is
  * created and the FHIR::Communication.payload attribute is set to point (via a
@@ -101,25 +101,28 @@ public class Communication2RoomMessage {
 
     @Inject
     IdentifierBuilders identifierBuilders;
+    IdentifierBuilders getIdentifierBuilders(){return (identifierBuilders);}
+    
     @Inject
-    protected RoomID2ResourceReferenceMap theRoom2ReferenceIDMap;
+    protected MatrixRoomID2ResourceReferenceMap theRoom2ReferenceIDMap;
     @Inject
-    protected UserID2PractitionerReferenceMap theUserID2PractitionerIDMap;
+    protected MatrxUserID2PractitionerIDMap theUserID2PractitionerIDMap;
 
     /**
      * The method is the primary (exposed) method for performing the entity
      * transformation. It incorporates a switch statement to derive the nature
      * of the "payload" transformation (re-encapsulation) to be performed.
      *
-     * @param communicationEvent A FHIR::Communication resource (see
-     * https://www.hl7.org/fhir/communication.html)
-     * @return String A Matrix(R) "m.room.message" message (see
+     * @param communicationEvent A FHIR::Communication resource which has a Payload that is 
+     * to be injected into the Room. (see
+     * https://www.hl7.org/fhir/communication.html for information on the element structure)
+     * @return A list of Matrix(R) "m.room.message" message (see
      * https://matrix.org/docs/spec/client_server/r0.6.0#room-event-fields)
      *
      * @throws TransformErrorException
      */
-    public List<JSONObject> doTransform(Communication pCommunicationEvent) throws TransformErrorException {
-        LOG.debug(".doTransform(): Entry, Message In --> " + pCommunicationEvent.toString());
+    public List<JSONObject> transfromCommunicatinToMatrixRoomMessageSet(Communication communicationEvent) throws TransformErrorException {
+        LOG.debug(".doTransform(): Entry, Message In --> {}", communicationEvent);
         Communication localCommunicationEvent = new Communication();
         LOG.trace("Message to be converted --> " + fhirParser.encodeResourceToString(pCommunicationEvent));
         try {
@@ -387,10 +390,10 @@ public class Communication2RoomMessage {
      * <p>
      * In this release, only a single Recipient is expected and managed.
      * <p>
-     * The method extracts the RoomServer.RoomID from the RoomServer.RoomMessage
-     * and attempts to find the corresponding FHIR::Reference in the
-     * RoomID2ResourceReferenceMap cache map.
-     * <p>
+ The method extracts the RoomServer.RoomID from the RoomServer.RoomMessage
+ and attempts to find the corresponding FHIR::Reference in the
+ MatrixRoomID2ResourceReferenceMap cache map.
+ <p>
      * The resulting single FHIR::Reference is then added to a
      * List<FHIR::Reference>
      * and returned. If no Reference is found, then an empty set is returned.
@@ -425,10 +428,10 @@ public class Communication2RoomMessage {
      * <p>
      * There is only a single Subject (which may be a FHIR::Group).
      * <p>
-     * The method extracts the RoomMessage.RoomID (i.e. "room_id") and attempts
-     * to find the corresponding FHIR::Reference in the
-     * RoomID2ResourceReferenceMap cache map.
-     * <p>
+ The method extracts the RoomMessage.RoomID (i.e. "room_id") and attempts
+ to find the corresponding FHIR::Reference in the
+ MatrixRoomID2ResourceReferenceMap cache map.
+ <p>
      * The resulting single FHIR::Reference is then returned. If no Reference is
      * found, then an new (non-conanical) one is created that points to a
      * FHIR::Group.

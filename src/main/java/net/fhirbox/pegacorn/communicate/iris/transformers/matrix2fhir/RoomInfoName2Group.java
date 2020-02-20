@@ -8,9 +8,9 @@ package net.fhirbox.pegacorn.communicate.iris.transformers.matrix2fhir;
 import java.util.Date;
 import javax.inject.Inject;
 import net.fhirbox.pegacorn.communicate.iris.transformers.TransformErrorException;
-import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.RoomID2ResourceReferenceMap;
-import net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps.RoomID2RoomNameReferenceMap;
-import net.fhirbox.pegacorn.communicate.iris.transformers.helpers.IdentifierBuilders;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps.MatrixRoomID2MatrixRoomNameMap;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.helpers.IdentifierBuilders;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import net.fhirbox.pegacorn.referencevalues.communication.PegacornCommunicateValueReferences;
@@ -46,10 +46,10 @@ public class RoomInfoName2Group {
     IdentifierBuilders identifierBuilders;
 
     @Inject
-    RoomID2ResourceReferenceMap roomId2ResourceMap;
+    MatrixRoomID2ResourceReferenceMap roomId2ResourceMap;
 
     @Inject
-    RoomID2RoomNameReferenceMap roomNameMap;
+    MatrixRoomID2MatrixRoomNameMap roomNameMap;
 
     PegacornCommunicateValueReferences pegacornCommunicateValueReferences = new PegacornCommunicateValueReferences();
     

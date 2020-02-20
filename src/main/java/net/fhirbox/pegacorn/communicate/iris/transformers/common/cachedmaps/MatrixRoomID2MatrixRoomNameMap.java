@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package net.fhirbox.pegacorn.communicate.iris.transformers.cachedmaps;
+package net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps;
 
 import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
@@ -19,9 +19,9 @@ import org.slf4j.LoggerFactory;
  * @author Mark A. Hunter (ACT Health)
  */
 @Singleton
-public class RoomID2RoomNameReferenceMap {
+public class MatrixRoomID2MatrixRoomNameMap {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RoomID2RoomNameReferenceMap.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MatrixRoomID2MatrixRoomNameMap.class);
     @Inject
     DefaultCacheManager theCommunicateCacheContainer;
 
