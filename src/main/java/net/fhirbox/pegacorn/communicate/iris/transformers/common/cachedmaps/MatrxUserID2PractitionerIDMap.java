@@ -15,14 +15,21 @@
  */
 package net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps;
 
+
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
+
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.helpers.IdentifierConverter;
 import org.infinispan.manager.DefaultCacheManager;
 
-import org.jboss.as.clustering.infinispan.DefaultCacheContainer;
+import net.fhirbox.pegacorn.communicate.iris.utilities.IrisSharedCacheManager;
+import net.fhirbox.pegacorn.communicate.iris.utilities.IrisSharedCacheAccessorBean;
+
 import org.infinispan.Cache;
 
 import org.hl7.fhir.r4.model.Identifier;
@@ -72,11 +79,21 @@ public class MatrxUserID2PractitionerIDMap {
     // The JNDI reference to lookup within Wildfly for the Replicate-Cache cotainer
     // My pointed to the Replicated Cache Container
     @Inject
-    private DefaultCacheManager theCommunicateCacheContainer;
+    private IrisSharedCacheAccessorBean theIrisCacheSetManager;
+    
     // My actual Replicated Cache
-    private Cache<String /* User Name */, Identifier /* Practitioner Identifier */> theUserName2PractitionerIdMap;
-    private Cache<Identifier /* Practitioner Identifier */, String /* User Name */> thePractitionerId2UserNameMap;
+    private Cache<String /* User Name */, String /* Practitioner Identifier */> theUserName2PractitionerIdMap;
+    private Cache<String /* Practitioner Identifier */, String /* User Name */> thePractitionerId2UserNameMap;
+    
+    FhirContext r4FHIRContext; 
+    IParser r4Parser;
+    IdentifierConverter mySimpleIdentifierConverter;
 
+    public MatrxUserID2PractitionerIDMap(){
+        r4FHIRContext = FhirContext.forR4();
+        r4Parser = r4FHIRContext.newJsonParser();
+        this.mySimpleIdentifierConverter = new IdentifierConverter();
+    }
     /**
      * The method is a post "Constructor" which initialises the replicated cache
      * service
@@ -85,9 +102,10 @@ public class MatrxUserID2PractitionerIDMap {
     @PostConstruct
     public void start() {
         LOG.debug("start(): Entry");
-        this.theUserName2PractitionerIdMap = this.theCommunicateCacheContainer.getCache("UserID2PractitionerIDMap", true);
-        this.thePractitionerId2UserNameMap = this.theCommunicateCacheContainer.getCache("PractitionerID2UserIDMap", true);
-        LOG.debug("start(): Exit, Got Cache -> {}, {}", theUserName2PractitionerIdMap.getName(), thePractitionerId2UserNameMap.getName());
+        this.theUserName2PractitionerIdMap = this.theIrisCacheSetManager.getIrisSharedCache();
+        this.thePractitionerId2UserNameMap = this.theIrisCacheSetManager.getIrisSharedCache();
+        
+    //    LOG.debug("start(): Exit, Got Cache -> {}, {}", theUserName2PractitionerIdMap.getName(), thePractitionerId2UserNameMap.getName());
     }
 
     /**
@@ -106,9 +124,10 @@ public class MatrxUserID2PractitionerIDMap {
             LOG.debug("getPractitionerID(): No Identifier found, User/Practitioner ID Map is empty");
             return (null);
         }
-        Identifier practitionerIdentifier = this.theUserName2PractitionerIdMap.get(userName);
-        if (practitionerIdentifier != null) {
-            LOG.debug("getPractitionerID(): Returning an Identifier -> {}", practitionerIdentifier);
+        String practitionerIDString = this.theUserName2PractitionerIdMap.get(userName);
+        if (practitionerIDString != null) {
+            LOG.debug("getPractitionerID(): Returning an Identifier -> {}", practitionerIDString);
+            Identifier practitionerIdentifier = this.mySimpleIdentifierConverter.fromString2Identifier(practitionerIDString);
             return (practitionerIdentifier);
         }
         LOG.debug("getPractitionerID(): No Identifier found, no User/Practitioner ID map entry found for RoomServer User Name: {}", userName);
@@ -132,12 +151,13 @@ public class MatrxUserID2PractitionerIDMap {
             LOG.debug("getUserName(): No Identifier found, User/Practitioner ID Map is empty");
             return (null);
         }
-        String userName = this.thePractitionerId2UserNameMap.get(practitionerIdentifier);
+        String practitierIDString = this.mySimpleIdentifierConverter.fromIdentifier2String(practitionerIdentifier);
+        String userName = this.thePractitionerId2UserNameMap.get(practitierIDString);
         if (userName != null) {
             LOG.debug("getUserName(): Returning a User Name -> {}", userName);
             return (userName);
         }
-        LOG.debug("getUserName(): No Name found, no User/Practitioner ID map entry found for Practitioner Identifier : {}", practitionerIdentifier);
+        LOG.debug("getUserName(): No Name found, no User/Practitioner ID map entry found for Practitioner Identifier : {}", practitierIDString);
         return (null);
     }
 
@@ -157,9 +177,10 @@ public class MatrxUserID2PractitionerIDMap {
         if (practitionerIdentifier == null) {
             LOG.debug("setPractitionerIDForUserName(): No entry create in User Name / PractitionerId Map, practitionerIdentifier == null");
         }
-        LOG.trace("setPractitionerIDForUserName(): Adding entry to map: userName -> " + userName + " Identifier -> " + practitionerIdentifier);
-        this.theUserName2PractitionerIdMap.put(userName, practitionerIdentifier);
-        this.thePractitionerId2UserNameMap.put(practitionerIdentifier, userName);
+        String practitionerIDString = this.mySimpleIdentifierConverter.fromIdentifier2String(practitionerIdentifier);
+        LOG.trace("setPractitionerIDForUserName(): Adding entry to map: userName -> " + userName + " Identifier -> " + practitionerIDString);
+        this.theUserName2PractitionerIdMap.put(userName, practitionerIDString);
+        this.thePractitionerId2UserNameMap.put(practitionerIDString, userName);
         LOG.debug("setPractitionerIDForUserName(): User Name / Identifier added to cachemap");
     }
 
@@ -179,7 +200,8 @@ public class MatrxUserID2PractitionerIDMap {
         if (practitionerIdentifier == null) {
             LOG.debug("setUserNameForPractitionerID(): No entry create in User Name / PractitionerId Map, practitionerIdentifier == null");
         }
-        LOG.trace("setPractitionerID(): Adding entry to map: userName -> " + userName + " Identifier -> " + practitionerIdentifier);
+        String practitionerIDString = this.mySimpleIdentifierConverter.fromIdentifier2String(practitionerIdentifier);
+        LOG.trace("setPractitionerID(): Adding entry to map: userName -> {}, Identifier -> {}", userName, practitionerIDString);
         this.setPractitionerIDForUserName(userName, practitionerIdentifier);
         LOG.debug("setPractitionerID(): User Name / Identifier added to cachemap");
     }

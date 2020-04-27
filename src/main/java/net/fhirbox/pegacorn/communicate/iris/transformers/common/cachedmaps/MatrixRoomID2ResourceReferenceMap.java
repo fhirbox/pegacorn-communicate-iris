@@ -15,18 +15,23 @@
  */
 package net.fhirbox.pegacorn.communicate.iris.transformers.common.cachedmaps;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.helpers.IdentifierConverter;
+import net.fhirbox.pegacorn.communicate.iris.transformers.common.helpers.ReferenceConverter;
 
 import org.infinispan.manager.CacheContainer;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
 
-import net.fhirbox.pegacorn.communicate.iris.utilities.SharedCache;
-import net.fhirbox.pegacorn.communicate.iris.utilities.SharedCacheBean;
+import net.fhirbox.pegacorn.communicate.iris.utilities.IrisSharedCacheManager;
+import net.fhirbox.pegacorn.communicate.iris.utilities.IrisSharedCacheAccessorBean;
 
 import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,18 +46,28 @@ public class MatrixRoomID2ResourceReferenceMap {
     private static final Logger LOG = LoggerFactory.getLogger(MatrixRoomID2ResourceReferenceMap.class);
 
     @Inject
-    DefaultCacheManager theCommunicateCacheContainer;
+    private IrisSharedCacheAccessorBean theIrisCacheSetManager;
 
     // My actual Replicated Cache (UserName, UserToken) 
-    private Cache<String /* RoomID */, Reference /* FHIR Resource */> theRoomID2FHIRResourceMap;
-    private Cache<Reference /* FHIR Resource */, String /* RoomID */> theFHIRResource2RoomIDMap;
+    private Cache<String /* RoomID */, String /* FHIR Resource */> theRoomID2FHIRResourceMap;
+    private Cache<String /* FHIR Resource */, String /* RoomID */> theFHIRResource2RoomIDMap;
+    
+        FhirContext r4FHIRContext; 
+    IParser r4Parser;
+    ReferenceConverter mySimpleReferenceConverter;
+
+    public MatrixRoomID2ResourceReferenceMap(){
+        r4FHIRContext = FhirContext.forR4();
+        r4Parser = r4FHIRContext.newJsonParser();
+        this.mySimpleReferenceConverter = new ReferenceConverter();
+    }
 
     @PostConstruct
     public void start() {
         LOG.debug("start(): Entry");
-        this.theRoomID2FHIRResourceMap = this.theCommunicateCacheContainer.getCache("RoomID2ResourceReferenceMap", true);
-        this.theFHIRResource2RoomIDMap = this.theCommunicateCacheContainer.getCache("ResourceReference2RoomIDMap", true);
-        LOG.debug("start(): Exit, Got Cache -> {}, and --> {}", this.theRoomID2FHIRResourceMap.getName(), this.theCommunicateCacheContainer.getName());
+        this.theRoomID2FHIRResourceMap = this.theIrisCacheSetManager.getIrisSharedCache();
+        this.theFHIRResource2RoomIDMap = this.theIrisCacheSetManager.getIrisSharedCache();
+    //    LOG.debug("start(): Exit, Got Cache -> {}, and --> {}", this.theRoomID2FHIRResourceMap.getName(), this.theFHIRResource2RoomIDMap.getName());
     }
 
     /**
@@ -69,9 +84,10 @@ public class MatrixRoomID2ResourceReferenceMap {
             return (null);
         }
         LOG.trace("getFHIRResourceReferenceFromRoomID(): getting Resource Reference for Room with Name : {}", roomID);
-        Reference resourceReference = this.theRoomID2FHIRResourceMap.get(roomID);
-        if (resourceReference != null) {
-            LOG.debug("getFHIRResourceReferenceFromRoomID(): Got Resource Reference {} for Room Name {}", resourceReference, roomID);
+        String resourceReferenceString = this.theRoomID2FHIRResourceMap.get(roomID);
+        if (resourceReferenceString != null) {
+            Reference resourceReference = this.mySimpleReferenceConverter.fromString2Reference(resourceReferenceString);
+            LOG.debug("getFHIRResourceReferenceFromRoomID(): Got Resource Reference {} for Room Name {}", resourceReferenceString, roomID);
             return (resourceReference);
         }
         LOG.debug("getFHIRResourceReferenceFromRoomID(): Could not find Resource Reference");
@@ -91,10 +107,15 @@ public class MatrixRoomID2ResourceReferenceMap {
             LOG.debug("getRoomIDFromResourceReference(): Exit, {}", resourceReference);
             return (null);
         }
+        String resourceReferenceString = this.mySimpleReferenceConverter.fromReference2String(resourceReference);
+        if(resourceReferenceString == null ){
+            LOG.debug("getRoomIDFromResourceReference(): Exit, couldn't convert the reference to a JSON string --> {}", resourceReference);
+            return(null);
+        }
         LOG.trace("getRoomIDFromResourceReference(): getting Room ID for Resource Reference {}", resourceReference);
-        String roomID = this.theFHIRResource2RoomIDMap.get(resourceReference);
+        String roomID = this.theFHIRResource2RoomIDMap.get(resourceReferenceString);
         if (roomID != null) {
-            LOG.debug("getRoomIDFromResourceReference(): Got Room Name {} for Resource Reference {}", roomID, resourceReference);
+            LOG.debug("getRoomIDFromResourceReference(): Got Room Name {} for Resource Reference {}", roomID, resourceReferenceString);
             return (roomID);
         }
         LOG.debug("getRoomIDFromResourceReference(): Could not find Room ID");
@@ -111,10 +132,14 @@ public class MatrixRoomID2ResourceReferenceMap {
             LOG.debug("setResourceReferenceForRoomID(): Exit, resourceReference == null");
             return;
         }
-        LOG.trace("setResourceReferenceForRoomID(): adding roomID = {} and resourceReference = {} to the RoomID2ResourceReferenceMap", roomID, resourceReference);
-        this.theRoomID2FHIRResourceMap.put(roomID, resourceReference);
-        LOG.trace("setResourceReferenceForRoomID(): adding resourceReference = {} and roomID = {} to the ResourceReference2RoomIDMap", resourceReference, roomID);
-        this.theFHIRResource2RoomIDMap.put(resourceReference, roomID);
+        String resourceReferenceString = this.mySimpleReferenceConverter.fromReference2String(resourceReference);
+        if( resourceReferenceString == null){
+            return;
+        }
+        LOG.trace("setResourceReferenceForRoomID(): adding roomID = {} and resourceReference = {} to the RoomID2ResourceReferenceMap", roomID, resourceReferenceString);
+        this.theRoomID2FHIRResourceMap.put(roomID, resourceReferenceString);
+        LOG.trace("setResourceReferenceForRoomID(): adding resourceReference = {} and roomID = {} to the ResourceReference2RoomIDMap", resourceReferenceString, roomID);
+        this.theFHIRResource2RoomIDMap.put(resourceReferenceString, roomID);
     }
     
     public void setRoomIDForResourceReference(Reference resourceReference, String roomID){

@@ -18,8 +18,8 @@ import org.infinispan.configuration.cache.CacheMode;
  *
  * @author Mark A. Hunter (ACT Health)
  */
-@ApplicationScoped
-public class SharedCache {
+
+public class IrisSharedCacheManager {
  
     private static final long ENTRY_LIFESPAN = 7 * 24 * 60 * 60 * 1000; // 7 Days
     
@@ -27,17 +27,20 @@ public class SharedCache {
  
     public DefaultCacheManager getCacheManager() {
         if (shareCacheManager == null) {
- 
-            GlobalConfiguration glob = new GlobalConfigurationBuilder().clusteredDefault() 
-                    .transport().addProperty("configurationFile", "jgroups-udp.xml")  
-                    .globalJmxStatistics().allowDuplicateDomains(true).enable() 
-                    .build();  
-            Configuration loc = new ConfigurationBuilder().jmxStatistics().enable()  
-                    .clustering().cacheMode(CacheMode.DIST_SYNC)  
-                    .hash().numOwners(2)  
-                    .expiration().lifespan(ENTRY_LIFESPAN)  
-                    .build();
-            shareCacheManager = new DefaultCacheManager(glob, loc, true);
+            // configure a named clustered cache configuration using Infinispan defined defaults
+            GlobalConfigurationBuilder builder = new GlobalConfigurationBuilder().clusteredDefault().defaultCacheName("iris-clustered-cache");
+            
+            // complete the config with a cluster name, jgroups config, and enable JMX statistics
+            GlobalConfiguration global = builder.transport().clusterName("iris-cluster").addProperty("configurationFile", "jgroups-udp.xml").jmx().enable().build();
+            
+            // define a local configuration for setting finer level properties including
+            // individual cache statistics and methods required for configuring the cache
+            // as clustered
+            Configuration local = new ConfigurationBuilder().statistics().enable().clustering()
+                    .cacheMode(CacheMode.DIST_SYNC).build();
+            
+            // create a cache manager based on the configurations
+            shareCacheManager = new DefaultCacheManager(global, local, true);
         }
         return shareCacheManager;
     }

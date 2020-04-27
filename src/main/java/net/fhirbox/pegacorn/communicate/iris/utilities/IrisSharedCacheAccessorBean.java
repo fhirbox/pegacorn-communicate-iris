@@ -8,6 +8,7 @@ package net.fhirbox.pegacorn.communicate.iris.utilities;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
+import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
 
 /**
@@ -15,13 +16,14 @@ import org.infinispan.manager.DefaultCacheManager;
  * @author Mark A. Hunter (ACT Health)
  */
 @ApplicationScoped
-public class SharedCacheBean {
-  
+public class IrisSharedCacheAccessorBean {
+
     @Inject
-    SharedCache cacheManagerProvider;
- 
-    @Produces
-    DefaultCacheManager getDefaultCacheManager() {
-        return cacheManagerProvider.getCacheManager();
+    IrisSharedCacheManager cacheManagerProvider;
+
+    public Cache<String, String> getIrisSharedCache() {
+        DefaultCacheManager tempCacheManager = cacheManagerProvider.getCacheManager();
+        return( tempCacheManager.getCache());
     }
+
 }

@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import net.fhirbox.pegacorn.communicate.iris.utilities.IrisSharedCacheAccessorBean;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
 import org.slf4j.Logger;
@@ -23,15 +24,15 @@ public class MatrixRoomID2MatrixRoomNameMap {
 
     private static final Logger LOG = LoggerFactory.getLogger(MatrixRoomID2MatrixRoomNameMap.class);
     @Inject
-    DefaultCacheManager theCommunicateCacheContainer;
+    private IrisSharedCacheAccessorBean theIrisCacheSetManager;
 
     private Cache<String, String> theRoomId2RoomNameMap;
 
     @PostConstruct
     public void start() {
         LOG.debug("start(): Entry");
-        theRoomId2RoomNameMap = theCommunicateCacheContainer.getCache("RoomID2RoomNameReferenceMap", true);
-        LOG.debug("start(): Exit, Got Cache -> " + theRoomId2RoomNameMap.getName());
+        theRoomId2RoomNameMap = this.theIrisCacheSetManager.getIrisSharedCache();;
+ //       LOG.debug("start(): Exit, Got Cache -> " + theRoomId2RoomNameMap.getName());
     }
 
     public String getName(String pRoomId) {
