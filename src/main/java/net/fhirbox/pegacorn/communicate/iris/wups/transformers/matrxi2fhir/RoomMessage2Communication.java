@@ -21,6 +21,8 @@ import java.util.ArrayList;
 
 import java.util.Date;
 import java.util.List;
+
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -97,6 +99,7 @@ import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
  * @since 2020-01-20
  *
  */
+@ApplicationScoped
 public class RoomMessage2Communication {
 
     private static final Logger LOG = LoggerFactory.getLogger(RoomMessage2Communication.class);

@@ -28,7 +28,6 @@ import javax.jms.ConnectionFactory;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.jms.JmsComponent;
 
-import net.fhirbox.pegacorn.communicate.iris.routes.helpers.CommunicationSubjectTypeCheck;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
@@ -38,12 +37,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
-import net.fhirbox.pegacorn.communicate.iris.routes.helpers.RoomServerMessageSplitter;
-import net.fhirbox.pegacorn.communicate.iris.validators.IncomingEventListValidator;
-import net.fhirbox.pegacorn.communicate.iris.workunitprocessors.matrix2fhir.RoomCreate2CommunicationCreate;
-import net.fhirbox.pegacorn.communicate.iris.workunitprocessors.matrix2fhir.RoomCreate2GroupCreate;
-import net.fhirbox.pegacorn.communicate.iris.workunitprocessors.matrix2fhir.RoomInfoName2Group;
-import net.fhirbox.pegacorn.communicate.iris.workunitprocessors.matrix2fhir.RoomMessage2Communication;
+import net.fhirbox.pegacorn.communicate.iris.wups.matrixeventreceiver.*;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.*;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.helpers.CommunicationSubjectTypeCheck;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.helpers.RoomServerMessageSplitter;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.fhir2matrix.helpers.*;
+
 
 import org.apache.camel.LoggingLevel;
 
@@ -105,7 +104,7 @@ public class MatrixEvents2FHIR extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
-    	this.
+    	
         if (getContext().hasComponent("jms") == null) {
             JmsComponent component = new JmsComponent();
             component.setConnectionFactory(connectionFactory);

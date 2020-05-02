@@ -34,10 +34,9 @@ import org.hl7.fhir.r4.model.StringType;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.context.FhirVersionEnum;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrxUserID2PractitionerIDMap;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierBuilders;
-import net.fhirbox.pegacorn.communicate.iris.wups.matrix2fhir.*;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.*;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.*;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.*;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import org.hl7.fhir.r4.model.Extension;
 

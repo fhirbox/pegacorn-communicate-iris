@@ -28,8 +28,6 @@ import javax.inject.Singleton;
 import org.infinispan.manager.DefaultCacheManager;
 
 import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierConverter;
-import net.fhirbox.pegacorn.communicate.iris.wups.utilities.IrisSharedCacheAccessorBean;
-import net.fhirbox.pegacorn.communicate.iris.wups.utilities.IrisSharedCacheManager;
 
 import org.infinispan.Cache;
 
@@ -82,6 +80,8 @@ public class MatrxUserID2PractitionerIDMap {
     @Inject
     private IrisSharedCacheAccessorBean theIrisCacheSetManager;
     
+    private IrisCacheMapNameSet cacheName = new IrisCacheMapNameSet();
+    
     // My actual Replicated Cache
     private Cache<String /* User Name */, String /* Practitioner Identifier */> theUserName2PractitionerIdMap;
     private Cache<String /* Practitioner Identifier */, String /* User Name */> thePractitionerId2UserNameMap;
@@ -102,11 +102,10 @@ public class MatrxUserID2PractitionerIDMap {
      */
     @PostConstruct
     public void start() {
-        LOG.debug("start(): Entry");
-        this.theUserName2PractitionerIdMap = this.theIrisCacheSetManager.getIrisSharedCache();
-        this.thePractitionerId2UserNameMap = this.theIrisCacheSetManager.getIrisSharedCache();
-        
-    //    LOG.debug("start(): Exit, Got Cache -> {}, {}", theUserName2PractitionerIdMap.getName(), thePractitionerId2UserNameMap.getName());
+        LOG.info("start(): Entry");
+        this.theUserName2PractitionerIdMap = this.theIrisCacheSetManager.getIrisSharedCache(cacheName.getMatrixUserName2FHIRPractitionerIdMap());
+        this.thePractitionerId2UserNameMap = this.theIrisCacheSetManager.getIrisSharedCache(cacheName.getFHIRPractitionerId2MatrixUserNameMap());
+        LOG.info("start(): Exit, Got Cache -> {}, {}", theUserName2PractitionerIdMap.getName(), thePractitionerId2UserNameMap.getName());
     }
 
     /**

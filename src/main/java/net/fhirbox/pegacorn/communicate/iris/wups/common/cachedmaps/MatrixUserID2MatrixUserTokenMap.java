@@ -11,7 +11,6 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
 import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierConverter;
-import net.fhirbox.pegacorn.communicate.iris.wups.utilities.IrisSharedCacheAccessorBean;
 
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
@@ -30,16 +29,18 @@ public class MatrixUserID2MatrixUserTokenMap {
     // My pointed to the Replicated Cache Container
     @Inject
     private IrisSharedCacheAccessorBean theIrisCacheSetManager;
-    
+
+    private IrisCacheMapNameSet cacheName = new IrisCacheMapNameSet();
+
     // My actual Replicated Cache (UserName, UserToken) 
     private Cache<String /* UserName */, String /* UserToken */> theMatrixUser2TokenMap;
     private Cache<String /* UserToken */, String /* UserName */> theMatrixToken2UserMap;
-    
-    FhirContext r4FHIRContext; 
+
+    FhirContext r4FHIRContext;
     IParser r4Parser;
     IdentifierConverter mySimpleIdentifierConverter;
 
-    public MatrixUserID2MatrixUserTokenMap(){
+    public MatrixUserID2MatrixUserTokenMap() {
         r4FHIRContext = FhirContext.forR4();
         r4Parser = r4FHIRContext.newJsonParser();
         this.mySimpleIdentifierConverter = new IdentifierConverter();
@@ -53,9 +54,9 @@ public class MatrixUserID2MatrixUserTokenMap {
     @PostConstruct
     public void start() {
         LOG.debug("start(): Entry");
-        this.theMatrixUser2TokenMap = this.theIrisCacheSetManager.getIrisSharedCache();
-        this.theMatrixToken2UserMap = this.theIrisCacheSetManager.getIrisSharedCache();
-    //    LOG.debug("start(): Exit, Got Cache -> {}, and --> {}", theMatrixUser2TokenMap.getName(), this.theMatrixToken2UserMap.getName());
+        this.theMatrixUser2TokenMap = this.theIrisCacheSetManager.getIrisSharedCache(cacheName.getMatrixUser2TokenMap());
+        this.theMatrixToken2UserMap = this.theIrisCacheSetManager.getIrisSharedCache(cacheName.getMatrixToken2MatrixUserMap());
+        LOG.debug("start(): Exit, Got Cache -> {}, and --> {}", theMatrixUser2TokenMap.getName(), this.theMatrixToken2UserMap.getName());
     }
 
     /**
@@ -116,8 +117,7 @@ public class MatrixUserID2MatrixUserTokenMap {
             LOG.debug("setUserTokenForUserName(): Exit, no user name / user token entry made, userToken == null");
             return;
         }
-        if( this.theMatrixUser2TokenMap.get(userName) != null )
-        {
+        if (this.theMatrixUser2TokenMap.get(userName) != null) {
             LOG.debug("setUserTokenForUserName(): Exit, no user name / user token already in map: userName -> {}, userToken --> {}", userName, userToken);
             return;
         }

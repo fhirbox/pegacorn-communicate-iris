@@ -27,8 +27,6 @@ import org.infinispan.manager.DefaultCacheManager;
 
 import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierConverter;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.ReferenceConverter;
-import net.fhirbox.pegacorn.communicate.iris.wups.utilities.IrisSharedCacheAccessorBean;
-import net.fhirbox.pegacorn.communicate.iris.wups.utilities.IrisSharedCacheManager;
 
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
@@ -48,6 +46,8 @@ public class MatrixRoomID2ResourceReferenceMap {
     @Inject
     private IrisSharedCacheAccessorBean theIrisCacheSetManager;
 
+    private IrisCacheMapNameSet cacheName = new IrisCacheMapNameSet();
+    
     // My actual Replicated Cache (UserName, UserToken) 
     private Cache<String /* RoomID */, String /* FHIR Resource */> theRoomID2FHIRResourceMap;
     private Cache<String /* FHIR Resource */, String /* RoomID */> theFHIRResource2RoomIDMap;
@@ -65,9 +65,9 @@ public class MatrixRoomID2ResourceReferenceMap {
     @PostConstruct
     public void start() {
         LOG.debug("start(): Entry");
-        this.theRoomID2FHIRResourceMap = this.theIrisCacheSetManager.getIrisSharedCache();
-        this.theFHIRResource2RoomIDMap = this.theIrisCacheSetManager.getIrisSharedCache();
-    //    LOG.debug("start(): Exit, Got Cache -> {}, and --> {}", this.theRoomID2FHIRResourceMap.getName(), this.theFHIRResource2RoomIDMap.getName());
+        this.theRoomID2FHIRResourceMap = this.theIrisCacheSetManager.getIrisSharedCache(cacheName.getMatrixRoomID2FHIRResourceReferenceMap());
+        this.theFHIRResource2RoomIDMap = this.theIrisCacheSetManager.getIrisSharedCache(cacheName.getFHIRResourceReference2MatrixRoomIDMap());
+        LOG.debug("start(): Exit, Got Cache -> {}, and --> {}", this.theRoomID2FHIRResourceMap.getName(), this.theFHIRResource2RoomIDMap.getName());
     }
 
     /**
