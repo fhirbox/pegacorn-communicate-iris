@@ -1,5 +1,6 @@
 package net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir;
 
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.instantmessaging.RoomInstantMessage2Communication;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -16,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierBuilders;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.IdentifierBuilders;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import net.fhirbox.pegacorn.referencevalues.communication.PegacornCommunicateValueReferences;
@@ -28,7 +29,7 @@ import org.json.JSONException;
 
 public class RoomCreate2CommunicationCreate {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RoomMessage2Communication.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RoomInstantMessage2Communication.class);
 
     PegacornSystemReference pegacornSystemReference = new PegacornSystemReference();
     

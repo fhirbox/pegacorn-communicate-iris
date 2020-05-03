@@ -19,6 +19,7 @@
  */
 package net.fhirbox.pegacorn.communicate.iris.wups;
 
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.instantmessaging.RoomInstantMessage2Communication;
 import javax.annotation.Resource;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -39,8 +40,8 @@ import org.slf4j.LoggerFactory;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.communicate.iris.wups.matrixeventreceiver.*;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.*;
-import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.helpers.CommunicationSubjectTypeCheck;
-import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.helpers.RoomServerMessageSplitter;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.CommunicationSubjectTypeCheck;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.RoomServerMessageSplitter;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.fhir2matrix.helpers.*;
 
 
@@ -78,7 +79,7 @@ public class MatrixEvents2FHIR extends RouteBuilder {
     protected CommunicateProperties deploymentProperties = new CommunicateProperties();
 
     @Inject
-    RoomMessage2Communication roomMessage2Communication;
+    RoomInstantMessage2Communication roomMessage2Communication;
 
     @Inject
     CommunicationSubjectTypeCheck communicationSubjectCheck;

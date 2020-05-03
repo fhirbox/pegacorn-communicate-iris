@@ -10,7 +10,7 @@ import ca.uhn.fhir.parser.IParser;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
-import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierConverter;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.common.IdentifierConverter;
 
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;

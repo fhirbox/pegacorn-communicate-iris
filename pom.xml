@@ -45,6 +45,7 @@ language governing permissions and limitations under the License. -->
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <netbeans.hint.license>mit</netbeans.hint.license>
     </properties>
 
     <dependencyManagement>
@@ -81,12 +82,21 @@ language governing permissions and limitations under the License. -->
             <type>jar</type>
             <scope>compile</scope>
         </dependency>
+        <!-- Pegacorn Common Code -->
         <dependency>
             <groupId>net.fhirbox.pegacorn</groupId>
             <artifactId>pegacorn-common</artifactId>
             <version>${project.version}</version>
             <type>jar</type>
             <scope>compile</scope>			
+        </dependency>
+        <!-- Pegacorn::Petasos -->
+        <dependency>
+            <groupId>net.fhirbox.pegacorn</groupId>
+            <artifactId>pegacorn-petasos-stub</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+            <scope>compile</scope>
         </dependency>
         <!-- Provided -->
         <dependency>

@@ -11,7 +11,7 @@ import javax.inject.Inject;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrixRoomID2MatrixRoomNameMap;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierBuilders;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.IdentifierBuilders;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import net.fhirbox.pegacorn.referencevalues.communication.PegacornCommunicateValueReferences;

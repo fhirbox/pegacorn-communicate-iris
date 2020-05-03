@@ -27,7 +27,7 @@ import javax.inject.Singleton;
 
 import org.infinispan.manager.DefaultCacheManager;
 
-import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierConverter;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.common.IdentifierConverter;
 
 import org.infinispan.Cache;
 
@@ -102,10 +102,10 @@ public class MatrxUserID2PractitionerIDMap {
      */
     @PostConstruct
     public void start() {
-        LOG.info("start(): Entry");
+        LOG.debug("start(): Entry");
         this.theUserName2PractitionerIdMap = this.theIrisCacheSetManager.getIrisSharedCache(cacheName.getMatrixUserName2FHIRPractitionerIdMap());
         this.thePractitionerId2UserNameMap = this.theIrisCacheSetManager.getIrisSharedCache(cacheName.getFHIRPractitionerId2MatrixUserNameMap());
-        LOG.info("start(): Exit, Got Cache -> {}, {}", theUserName2PractitionerIdMap.getName(), thePractitionerId2UserNameMap.getName());
+        LOG.debug("start(): Exit, Got Cache -> {}, {}", theUserName2PractitionerIdMap.getName(), thePractitionerId2UserNameMap.getName());
     }
 
     /**

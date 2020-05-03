@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2020 MAHun.
+ * Copyright 2020 ACT Health.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@ import javax.persistence.Id;
 
 /**
  *
- * @author MAHun
+ * @author Mark A. Hunter (ACT Health)
  */
 public class IrisCacheMapNameSet {
     private static final String IRIS_MATRIX_ROOM_ID_2_ROOM_NAME_MAP = "Pegacorn.Communicate.Iris.MatrixRoomID2MatrixRoomNameMap";

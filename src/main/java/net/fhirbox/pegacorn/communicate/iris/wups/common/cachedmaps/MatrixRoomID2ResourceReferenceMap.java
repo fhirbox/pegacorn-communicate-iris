@@ -25,8 +25,8 @@ import org.infinispan.manager.CacheContainer;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
 
-import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.IdentifierConverter;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.helpers.ReferenceConverter;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.common.IdentifierConverter;
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.common.ReferenceConverter;
 
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;

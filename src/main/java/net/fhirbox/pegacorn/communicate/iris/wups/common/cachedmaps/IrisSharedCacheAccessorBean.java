@@ -25,11 +25,11 @@ public class IrisSharedCacheAccessorBean {
     IrisSharedCacheManager cacheManagerProvider;
 
     public Cache<String, String> getIrisSharedCache(String cacheName) {
-        LOG.info("getIrisSharedCache(): entry, cacheName --> {}", cacheName);
+        LOG.debug("getIrisSharedCache(): entry, cacheName --> {}", cacheName);
         DefaultCacheManager tempCacheManager = cacheManagerProvider.getDefaultCacheManager();
-        LOG.info("getIrisSharedCache(): got the DefaultCacheManager, name --> {}", tempCacheManager.getName() );
+        LOG.trace("getIrisSharedCache(): got the DefaultCacheManager, name --> {}", tempCacheManager.getName() );
         Cache<String, String> newCache = tempCacheManager.getCache(cacheName, true);
-        LOG.info("getIrisSharedCache(): got the new Cache, name --> {} ", newCache.getName() );
+        LOG.debug("getIrisSharedCache(): exit, got the new Cache, name --> {} ", newCache.getName() );
         return( newCache);
     }
 
