@@ -28,6 +28,7 @@ import java.util.Set;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MajorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.MatrixMessageException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.PayloadTransformationOutcomeEnum;
 import org.json.JSONObject;
@@ -53,7 +54,7 @@ import org.hl7.fhir.r4.model.MessageHeader.MessageSourceComponent;
 
 import org.hl7.fhir.utilities.xhtml.XhtmlNode;
 
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.WrongContentTypeException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrxUserID2PractitionerIDMap;
@@ -123,84 +124,102 @@ public class RoomInstantMessage2Communication
     @Inject
     IdentifierBuilders identifierBuilders;
 
+    /**
+     *
+     */
     @Inject
     protected MatrixRoomID2ResourceReferenceMap theRoom2ReferenceIDMap;
 
+    /**
+     *
+     */
     @Inject
     protected MatrxUserID2PractitionerIDMap theUserID2PractitionerIDMap;
 
     @Inject
     private MatrixMessageContent2MediaReferenceSet mediaReferenceGenerator;
-    
-    @Inject 
+
+    @Inject
     private MatrixRoomID2GroupReference roomID2GroupReference;
 
-    public UoWProcessingOutcomeEnum processUnitOfWork(TransientUoW theUoW)
+    @Inject
+    MatrixUserID2CommunicationSenderReference matrixUserID2SenderReferenceMapper;
+
+    @Inject
+    MatrixUserID2CommunicationRecipientReference matrixUserID2RecipientReferenceMapper;
+
+    @Inject
+    MatrixTextMessageContent2CommunicationPayload matrixTextContent2CommunicationPayloadMapper;
+
+    /**
+     *
+     * @param theUoW
+     * @return
+     * @throws MatrixMessageException
+     * @throws JSONException
+     * @throws MajorTransformationException
+     */
+    public List<Bundle> convertMatrixInstantMessage2FHIRElements(String roomInstantMessage)
+            throws MatrixMessageException, JSONException, MajorTransformationException
     {
-        if (theUoW == null) {
-            return (UoWProcessingOutcomeEnum.PEGACORN_UOW_OUTCOME_FAILED);
+        LOG.debug("convertMatrixInstantMessage2FHIRElements(): Entry, Matrix Room Instant Message --> {}", roomInstantMessage);
+        if (roomInstantMessage == null) {
+            throw (new MatrixMessageException("Matrix Room Instant Message --> is null"));
         }
-        if (theUoW.getUowIngressContent().isEmpty()) {
-            return (UoWProcessingOutcomeEnum.PEGACORN_UOW_OUTCOME_SUCCESS);
+        if (roomInstantMessage.isEmpty()) {
+            throw (new MatrixMessageException("Matrix Room Instant Message --> is empty"));
         }
-        Iterator<String> ingressContentIterator = theUoW.getUowIngressContent().iterator();
-        HashSet<Bundle> egressContentAsBundles = new HashSet<Bundle>();
-        while (ingressContentIterator.hasNext()) {
-            PayloadTransformationOutcomeEnum transformOutcome = wrapCommunicationBundle(egressContentAsBundles, ingressContentIterator.next());
-        }
-        return (UoWProcessingOutcomeEnum.PEGACORN_UOW_OUTCOME_FAILED);
-    }
-
-    private PayloadTransformationOutcomeEnum wrapCommunicationBundle(Set<Bundle> outputBundles, String theMatrixInstantMessage)
-    {
-        LOG.debug("wrapCommunicationBundle(): Source Matrix Instant Message --> {}", theMatrixInstantMessage);
-
-        // Before we do anything, let's confirm the (superficial) integrity of the incoming Matrix Instant Message
-        LOG.trace("wrapCommunicationBundle(): Checking integrity of the incoming Matrix Instant Message");
-        if (theMatrixInstantMessage == null) {
-            LOG.debug("wrapCommunicationBundle: Incoming Matrix Instant Message is <null>, returning PAYLOAD_TRANSFORM_FAILURE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE);
-        }
-        if (theMatrixInstantMessage.isEmpty()) {
-            LOG.debug("wrapCommunicationBundle: Incoming Matrix Instant Message is empty, returning PAYLOAD_TRANSFORM_FAILURE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE);
-        }
-
         // We need some helper functions to encode/decode the FHIR based message structures
         LOG.trace("wrapCommunicationBundle(): Initialising FHIR Resource Parser & Setting Pretty Print");
         FhirContext fhirContextHandle = FhirContext.forR4();
         IParser fhirResourceParser = fhirContextHandle.newJsonParser();
-        fhirResourceParser.setPrettyPrint(true);
+        // Now set up Iterator on the Ingres Content
+        Communication newCommunication = matrix2Communication(roomInstantMessage);
+        MessageHeader newMessageHeader = matrix2MessageHeader(newCommunication, roomInstantMessage);
+        Bundle newCommunicationBundle = wrapCommunicationBundle(newMessageHeader, newCommunication);
+//        String newCommunicationBundleAsString = fhirResourceParser.encodeResourceToString(newCommunicationBundle);
+//        ArrayList<String> newOutputSet = new ArrayList<String>();
+//        newOutputSet.add(newCommunicationBundleAsString);
+        ArrayList<Bundle> newOutputSet = new ArrayList<Bundle>();
+        newOutputSet.add(newCommunicationBundle);
+        return (newOutputSet);
+    }
 
-        // First, let's transform the incoming Matrix Room Instant Message
-        LOG.trace("wrapCommunicationBundle(): Creating the necessary holding objects for created content");
-        HashSet<Communication> outputCommunicationElements = new HashSet<Communication>();
-        PayloadTransformationOutcomeEnum transformOutcome = matrix2Communication(outputCommunicationElements, theMatrixInstantMessage);
+    private Bundle wrapCommunicationBundle(MessageHeader newMH, Communication newComm)
+            throws MatrixMessageException, JSONException, MajorTransformationException
+    {
+        LOG.debug("wrapCommunicationBundle(): Entry, FHIR::MessageHeader --> {}, FHIR::Communication --> {}", newMH, newComm);
 
-        /*        MessageHeader messageHeader = new MessageHeader();
-        LOG.trace(".matrix2CommunicationBundle(): Message to be converted --> " + theMessage);
+        // Before we do anything, let's confirm the (superficial) integrity of the incoming objects
+        LOG.trace("wrapCommunicationBundle(): Checking integrity of the incoming Matrix Instant Message");
+        if (newMH == null) {
+            LOG.error("wrapCommunicationBundle: MessageHeader resource is null!!!");
+            throw (new MajorTransformationException("wrapCommunicationBundle: FHIR::MessageHeader resource is null"));
+        }
+        if (newComm == null) {
+            LOG.error("wrapCommunicationBundle: Communication resource is null!!!");
+            throw (new MajorTransformationException("wrapCommunicationBundle: FHIR::Communication resource is null"));
+        }
+        LOG.trace("wrapCommunicationBundle(): Creating FHIR::Bundle and setting the FHIR::Bundle.BundleType");
         Bundle newBundleElement = new Bundle();
-              communicationElement = matrix2Communication(theMessage);
-            } catch(TransformErrorEx)
-            messageHeader = matrix2MessageHeader(communicationElement, theMessage);
-            newBundleElement.setType(Bundle.BundleType.MESSAGE);
-            BundleEntryComponent bundleEntryForMessageHeaderElement = new BundleEntryComponent();
-            bundleEntryForMessageHeaderElement.setResource(messageHeader);
-            BundleEntryComponent bundleEntryForCommunicationElement = new BundleEntryComponent();
-            BundleEntryRequestComponent bundleRequest = new BundleEntryRequestComponent();
-            bundleRequest.setMethod(Bundle.HTTPVerb.POST);
-            bundleRequest.setUrl("Communication");
-            bundleEntryForCommunicationElement.setRequest(bundleRequest);
-            bundleEntryForCommunicationElement.setResource(communicationElement);
-            newBundleElement.addEntry(bundleEntryForMessageHeaderElement);
-            newBundleElement.addEntry(bundleEntryForCommunicationElement);
-            newBundleElement.setTimestamp(new Date());
-            LOG.trace(".matrix2CommunicationBundle(): Created Bundle --> " + fhirResourceParser.encodeResourceToString(newBundleElement));
-            outputBundles.add(newBundleElement);
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_SUCCESSFUL);
-        } catch (JSONException jsonExtractionError) {
-            return(PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE_CONTENT_MALFORMED);
-        } */
+        newBundleElement.setType(Bundle.BundleType.MESSAGE);
+        LOG.trace("wrapCommunicationBundle(): Creating FHIR::BundleEntryComponent for FHIR::MessageHeader resource");
+        BundleEntryComponent bundleEntryForMessageHeaderElement = new BundleEntryComponent();
+        bundleEntryForMessageHeaderElement.setResource(newMH);
+        LOG.trace("wrapCommunicationBundle(): Creating FHIR::BundleEntryComponent for FHIR::Communication resource");
+        BundleEntryComponent bundleEntryForCommunicationElement = new BundleEntryComponent();
+        LOG.trace("wrapCommunicationBundle(): Creating FHIR::BundleEntryRequestComponent for the FHIR::Communication resource");
+        BundleEntryRequestComponent bundleRequest = new BundleEntryRequestComponent();
+        bundleRequest.setMethod(Bundle.HTTPVerb.POST);
+        bundleRequest.setUrl("Communication");
+        bundleEntryForCommunicationElement.setRequest(bundleRequest);
+        bundleEntryForCommunicationElement.setResource(newComm);
+        LOG.trace("wrapCommunicationBundle(): Creating Adding the MessageHeader BundleEntryComponent & Communication BundleEntryComponent to the Bundle resource");
+        newBundleElement.addEntry(bundleEntryForMessageHeaderElement);
+        newBundleElement.addEntry(bundleEntryForCommunicationElement);
+        newBundleElement.setTimestamp(new Date());
+        LOG.debug("wrapCommunicationBundle(): Exit, Created FHIR::Bundle --> {}", newBundleElement);
+        return (newBundleElement);
     }
 
     private MessageHeader matrix2MessageHeader(Communication theResultantCommunicationElement, String theMessage)
@@ -226,115 +245,151 @@ public class RoomInstantMessage2Communication
      * https://matrix.org/docs/spec/client_server/r0.6.0#room-event-fields)
      * @return Communication A FHIR::Communication resource (see
      * https://www.hl7.org/fhir/communication.html)
-     * @throws TransformErrorException
+     * @throws MinorTransformationException
      */
-    private PayloadTransformationOutcomeEnum matrix2Communication(Set<Communication> outputContentSet, String theMatrixInstantMessage)
+    private Communication matrix2Communication(String theMatrixRoomInstantMessage)
+            throws MatrixMessageException, MajorTransformationException, JSONException
     {
-        LOG.debug("matrix2Communication(): The incoming Matrix Instant Message is --> {}", theMatrixInstantMessage);
+        LOG.debug("matrix2Communication(): The incoming Matrix Instant Message is --> {}", theMatrixRoomInstantMessage);
         // The code wouldn't have got here if the Incoming Message was empty or null, so don't check again.
         LOG.trace("matrix2Communication(): Creating our two primary working objects, fhirCommunication (Communication) & matrixMessageObject (JSONObject)");
         Communication fhirCommunication;
-        JSONObject matrixMessageObject;
-        LOG.trace("matrix2Communication(): Convertig incoming MatrixInstantMessage to JSONObject");
-        try {
-            matrixMessageObject = new JSONObject(theMatrixInstantMessage);
-        } catch (JSONException jsonExtractionError) {
-            LOG.debug("matrix2Communication(): JSON conversion failed, error --> {}, returning PAYLOAD_TRANSFORM_FAILURE_INGRES_CONTENT_MALFORMED", jsonExtractionError.getMessage());
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE_INGRES_CONTENT_MALFORMED);
-        }
+        JSONObject matrixMessageObject = new JSONObject(theMatrixRoomInstantMessage);
         // So we now have a valid JSONObject for the incoming Matrix Instant Message
         LOG.trace("matrix2Communication(): Conversion of incoming Matrix Instant Message into JSONObject successful, now extracting Instant Message -content- field");
         if (!matrixMessageObject.has("content")) {
-            LOG.debug("matrix2Communication(): Message Object does not contain -content- field, returning PAYLOAD_TRANSFORM_FAILURE_INGRES_CONTENT_INCOMPLETE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE_INGRES_CONTENT_INCOMPLETE);
+            LOG.error("matrix2Communication(): Exit, Matrix Room Instant Message (m.room.message) --> missing -content- field");
+            throw (new MatrixMessageException("matrix2Communication(): Exit, Matrix Room Instant Message (m.room.message) --> missing -content- field"));
         }
         JSONObject messageContent = matrixMessageObject.getJSONObject("content");
         LOG.trace("matrix2Communication(): Extracted -content- field from Message Object, -content- --> {}", messageContent);
+        // OK, now build messageDate --> using present instant if none provided TODO : perhaps we shouldn't use instant
+        Date messageDate;
+        if (matrixMessageObject.has("origin_server_ts")) {
+            messageDate = new Date(matrixMessageObject.getLong("origin_server_ts"));
+        } else {
+            messageDate = Date.from(Instant.now());
+        }
         // OK, so now we want to build the basic structure of the Communication object, which is common irrespective of Instant Message type
         LOG.trace("matrix2Communication(): Building the basic structure of the Communication object");
         fhirCommunication = buildDefaultCommunicationEntity(matrixMessageObject);
-        /*        if (fhirCommunication == null) {
-            LOG.debug("matrix2Communication(): Could not build basic Communication object, returning PAYLOAD_TRANSFORM_FAILURE_INGRES_CONTENT_MALFORMED");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE_INGRES_CONTENT_MALFORMED);
-        }
-        LOG.trace("matrix2Communication(): Built default basic Communication object, now performing -case- analysis for -content- type");
+        LOG.trace("matrix2Communication(): Built default basic Communication object, now performing Swtich analysis for -content- type");
         switch (messageContent.getString("msgtype")) {
             case "m.audio": {
-                LOG.trace("matrix2Communication(): Message Type (msgtype) --> m.audio");
-                // So, the FHIR Communication resource can support multiple "payloads" - so we need to create a suitable container for them.
+                LOG.trace("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.audio");
                 List<CommunicationPayloadComponent> localPayloadList = new ArrayList<CommunicationPayloadComponent>();
-                // Now, we need to create our (singular) "payload" (FHIR CommunicationPayloadComponent) for this message.
                 CommunicationPayloadComponent localPayload = new CommunicationPayloadComponent();
-                // Now, m.audio messages are a type of "Media", so our actual payload in the Communication resource is a FHIR Reference to that "Media"
-                List<Reference> localMediaEntityReferences = this.buildMediaReference(localMessageEvent);
-                for (Integer localCounter = 0; localCounter < localMediaEntityReferences.size(); localCounter += 1) {
-                    localPayloadList.add(localPayload.setContent(localMediaEntityReferences.get(localCounter)));
+                try {
+                    Reference newMediaReference = this.mediaReferenceGenerator.buildVideoReference(messageContent, messageDate);
+                    localPayloadList.add(localPayload.setContent(newMediaReference));
+                } catch (WrongContentTypeException | MinorTransformationException minorException) {
+                    if (minorException instanceof WrongContentTypeException) {
+                        LOG.debug("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> thought it was m.audio --> inject raw as data!");
+                    } else {
+                        LOG.debug("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.audio, error decoding --> inject raw as data!");
+                    }
+                    localPayloadList.add(createDumbTextPayload(messageContent.toString()));
                 }
                 fhirCommunication.setPayload(localPayloadList);
                 break;
             }
             case "m.emote": {
-                LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.emote");
+                LOG.trace(".matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.emote");
                 break;
             }
             case "m.file": {
-                LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.file");
+                LOG.trace(".matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.file");
                 break;
             }
             case "m.image": {
-                LOG.trace(".matrix2Communication(): Message Type (msgtype --> m.image");
+                LOG.trace(".matrix2Communication(): MMatrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.image");
                 List<CommunicationPayloadComponent> localPayloadList = new ArrayList<CommunicationPayloadComponent>();
                 CommunicationPayloadComponent localPayload = new CommunicationPayloadComponent();
-                List<Reference> localMediaEntityReferences = this.buildMediaReference(localMessageEvent);
-                for (Integer localCounter = 0; localCounter < localMediaEntityReferences.size(); localCounter += 1) {
-                    localPayloadList.add(localPayload.setContent(localMediaEntityReferences.get(localCounter)));
+                try {
+                    Reference newMediaReference = this.mediaReferenceGenerator.buildVideoReference(messageContent, messageDate);
+                    localPayloadList.add(localPayload.setContent(newMediaReference));
+                } catch (WrongContentTypeException | MinorTransformationException minorException) {
+                    if (minorException instanceof WrongContentTypeException) {
+                        LOG.debug("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> thought it was m.image --> inject raw as data!");
+                    } else {
+                        LOG.debug("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.image, error decoding --> inject raw as data!");
+                    }
+                    localPayloadList.add(createDumbTextPayload(messageContent.toString()));
                 }
-                localCommunicationEvent.setPayload(localPayloadList);
+                fhirCommunication.setPayload(localPayloadList);
                 break;
             }
             case "m.location": {
-                LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.location");
+                LOG.trace(".matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.location");
                 break;
             }
             case "m.notice": {
-                LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.notice");
+                LOG.trace(".matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.notice");
                 break;
             }
             case "m.server_notice": {
-                LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.server_notice");
+                LOG.trace(".matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.server_notice");
                 break;
             }
             case "m.text": {
-                LOG.trace(".matrix2Communication(): Case --> Message Type (msgtype) == m.text: Start");
-                List<CommunicationPayloadComponent> localPayloadList = this.buildMTextPayload(localMessageContent);
-                localCommunicationEvent.setPayload(localPayloadList);
-                Reference referredToCommunicationEvent = this.buildInResponseTo(localMessageContent);
-                if (referredToCommunicationEvent != null) {
-                    localCommunicationEvent.addInResponseTo(referredToCommunicationEvent);
+                LOG.trace(".matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.text");
+                List<CommunicationPayloadComponent> localPayloadList = new ArrayList<CommunicationPayloadComponent>();
+                try {
+                    localPayloadList = this.matrixTextContent2CommunicationPayloadMapper.buildMTextPayload(messageContent);
+                } catch (WrongContentTypeException | MinorTransformationException contentException) {
+                    if (contentException instanceof WrongContentTypeException) {
+                        LOG.debug("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> thought it was m.text --> inject raw as data!");
+                    } else {
+                        LOG.debug("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.video, error decoding --> inject raw as data!");
+                    }
+                    localPayloadList.add(createDumbTextPayload(messageContent.toString()));
+                    fhirCommunication.setPayload(localPayloadList);
                 }
-                LOG.trace(".matrix2Communication(): Case --> Message Type (msgtype) == m.text: Finished");
+                fhirCommunication.setPayload(localPayloadList);
+                Reference referredToCommunicationEvent = this.buildInResponseTo(messageContent);
+                if (referredToCommunicationEvent != null) {
+                    fhirCommunication.addInResponseTo(referredToCommunicationEvent);
+                }
+                LOG.trace("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.text: Finished");
                 break;
             }
             case "m.video": {
-                LOG.trace(".matrix2Communication(): Message Type (msgtype) --> m.video");
+                LOG.trace("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.video");
                 List<CommunicationPayloadComponent> localPayloadList = new ArrayList<CommunicationPayloadComponent>();
                 CommunicationPayloadComponent localPayload = new CommunicationPayloadComponent();
-                List<Reference> localMediaEntityReferences = this.buildMediaReference(localMessageEvent);
-                for (Integer localCounter = 0; localCounter < localMediaEntityReferences.size(); localCounter += 1) {
-                    localPayloadList.add(localPayload.setContent(localMediaEntityReferences.get(localCounter)));
+                try {
+                    Reference newMediaReference = this.mediaReferenceGenerator.buildVideoReference(messageContent, messageDate);
+                    localPayloadList.add(localPayload.setContent(newMediaReference));
+                } catch (WrongContentTypeException | MinorTransformationException minorException) {
+                    if (minorException instanceof WrongContentTypeException) {
+                        LOG.debug("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> thought it was m.video --> inject raw as data!!");
+                    } else {
+                        LOG.debug("matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> m.video, error decoding --> inject raw as data!");
+                    }
+                    localPayloadList.add(createDumbTextPayload(messageContent.toString()));
                 }
-                localCommunicationEvent.setPayload(localPayloadList);
+                fhirCommunication.setPayload(localPayloadList);
                 break;
             }
             default: {
-                LOG.trace(".matrix2Communication(): Message Type (msgtype) --> unknown");
-                throw (new TransformErrorException("Unknown Message Type"));
+                LOG.trace(".matrix2Communication(): Matrix Room Instant Message (m.room.message), -content-, -msgtype- --> unknown");
+                throw (new MatrixMessageException("matrix2Communication(): Matrix Room Instant Message (m.room.message) --> Unknown Message Type"));
             }
         }
-        LOG.debug(".matrix2Communication(): Created Communication Message --> " + localCommunicationEvent.toString());
-        return (localCommunicationEvent);
-         */   }
+        LOG.debug(".matrix2Communication(): Created Communication Message --> {}", fhirCommunication);
+        return (fhirCommunication);
+    }
 
+    private CommunicationPayloadComponent createDumbTextPayload(String textToAdd)
+    {
+        LOG.debug("createDumbTextPayload(): Entry, textToAdd --> {}", textToAdd);
+        JSONObject normalPayload = new JSONObject();
+        normalPayload.put("format", "org.fhirbox.pegacorn.custom.malformed_content");
+        normalPayload.put("formatted_body", textToAdd);
+        Communication.CommunicationPayloadComponent normalPayloadComponent = new Communication.CommunicationPayloadComponent();
+        normalPayloadComponent.setContent(new StringType(normalPayload.toString()));
+        return (normalPayloadComponent);
+    }
 
     private Reference buildInResponseTo(JSONObject pRoomMessageContent)
     {
@@ -377,41 +432,40 @@ public class RoomInstantMessage2Communication
      * @return Communication A FHIR::Communication resource (see
      * https://www.hl7.org/fhir/communication.html)
      */
-    private PayloadTransformationOutcomeEnum buildDefaultCommunicationEntity(Communication newCommunication, JSONObject roomIM)
+    private Communication buildDefaultCommunicationEntity(JSONObject roomMessage)
+            throws MatrixMessageException, MajorTransformationException, JSONException
     {
-        LOG.debug("buildDefaultCommunicationMessage(): Entry, for Room Instant Message --> {}", roomIM);
-        LOG.trace("buildDefaultCommunicationMessage(): Checking the FHIR::Communication entity");
-        if (newCommunication == null) {
-            LOG.debug("buildDefaultCommunicationMessage(): Exit, Communication resource is null, returning --> PAYLOAD_TRANSFORM_FAILURE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE);
+        LOG.debug("buildDefaultCommunicationMessage(): Entry, Room Instant Message (m.room.message) --> {}", roomMessage);
+        if (roomMessage == null) {
+            LOG.error("buildDefaultCommunicationMessage(): Exit, Room Instant Message (m.room.message) --> pointer is null");
+            throw (new MatrixMessageException("Room Instant Message (m.room.message) --> pointer is null"));
         }
-        if (roomIM == null) {
-            LOG.debug("buildDefaultCommunicationMessage(): Exit, JSONObject for Room Instant Message (roomIM) is null, returning --> PAYLOAD_TRANSFORM_FAILURE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE);
-        }
-        if (roomIM.isEmpty()) {
-            LOG.debug("buildDefaultCommunicationMessage(): Exit, JSONObject for Room Instant Message (roomIM) is empty, returning --> PAYLOAD_TRANSFORM_FAILURE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE);
+        if (roomMessage.isEmpty()) {
+            LOG.error("buildDefaultCommunicationMessage(): Exit, Room Instant Message (m.room.message) is empty");
+            throw (new MatrixMessageException("Room Instant Message (m.room.message) --> message is empty"));
         }
         LOG.trace(".buildDefaultCommunicationMessage(): Add the FHIR::Communication.Identifier (type = FHIR::Identifier) Set");
-        PayloadTransformationOutcomeEnum identifierTransformSuccess = this.buildCommunicationIdentifier(newCommunication.getIdentifier(), roomIM);
-        if (identifierTransformSuccess != PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_SUCCESSFUL) {
-            LOG.debug("buildDefaultCommunicationMessage(): Exit, Could not create an Identifier, returning --> {}", identifierTransformSuccess);
-            return (identifierTransformSuccess);
+        List<Identifier> communicationIdentifierSet = this.buildCommunicationIdentifier(roomMessage);
+        if (communicationIdentifierSet.isEmpty()) {
+            LOG.debug("buildDefaultCommunicationMessage(): Exit, Could not create an Identifier!!!");
+            return (null);
         }
         LOG.trace(".buildDefaultCommunicationMessage(): Add Id value (from the m.room.message::event_id");
-        if (roomIM.has("event_id")) {
-            newCommunication.setId(roomIM.getString("event_id"));
+        if (!roomMessage.has("event_id")) {
+            LOG.error("buildDefaultCommunicationMessage(): Exit, Room Instant Message (m.room.message) --> -event_id- is empty");
+            throw (new MatrixMessageException("Room Instant Message (m.room.message) --> -event-id- is empty"));
         }
-        LOG.trace(".buildDefaultCommunicationMessage(): Add narrative of Communication Entity");
-        Narrative elementNarrative = new Narrative();
-        elementNarrative.setStatus(Narrative.NarrativeStatus.GENERATED);
-        XhtmlNode elementDiv = new XhtmlNode();
-        elementDiv.addDocType("xmlns=\\\"http://www.w3.org/1999/xhtml\"");
-        elementDiv.addText("<p> A message generate on the Pegacorn::Communicate::RoomServer platform </p>");
-        LOG.trace("buildDefaultCommunicationMessage(): Adding Narrative, content added --> {}", elementDiv.getContent());
-        elementNarrative.setDiv(elementDiv);
-        newCommunication.setText(elementNarrative);
+        Communication newCommunication = new Communication();
+        newCommunication.setId(roomMessage.getString("event_id"));
+//        LOG.trace(".buildDefaultCommunicationMessage(): Add narrative of Communication Entity");
+//        Narrative elementNarrative = new Narrative();
+//        elementNarrative.setStatus(Narrative.NarrativeStatus.GENERATED);
+//        XhtmlNode elementDiv = new XhtmlNode();
+//        elementDiv.addDocType("xmlns=\\\"http://www.w3.org/1999/xhtml\"");
+//        elementDiv.addText("<p> A message generate on the Pegacorn::Communicate::RoomServer platform </p>");
+//        LOG.trace("buildDefaultCommunicationMessage(): Adding Narrative, content added --> {}", elementDiv.getContent());
+//        elementNarrative.setDiv(elementDiv);
+//        newCommunication.setText(elementNarrative);
         LOG.trace("buildDefaultCommunicationMessage(): Set the FHIR::Communication.CommunicationStatus to COMPLETED (we don't chain, yet)");
         // TODO : Add chaining in Communication entities.
         newCommunication.setStatus(Communication.CommunicationStatus.COMPLETED);
@@ -419,28 +473,27 @@ public class RoomInstantMessage2Communication
         newCommunication.setPriority(Communication.CommunicationPriority.ROUTINE);
         LOG.trace("buildDefaultCommunicationMessage(): Set the FHIR::COmmunication.Set to when the person sent the message");
         Date sentDate;
-        if (roomIM.has("origin_server_ts")) {
-            sentDate = new Date(roomIM.getLong("origin_server_ts"));
+        if (roomMessage.has("origin_server_ts")) {
+            sentDate = new Date(roomMessage.getLong("origin_server_ts"));
         } else {
             sentDate = Date.from(Instant.now());
         }
         newCommunication.setSent(sentDate);
         LOG.trace("buildDefaultCommunicationMessage(): Set the FHIR::Communication.Sender to the person who sent the message");
-        if (roomIM.has("sender")) {
-            String sender = roomIM.getString("sender");
-            Reference senderRef = new Reference();
-            PayloadTransformationOutcomeEnum senderRefBuildOutcome = this.buildSenderReference(senderRef, sender);
+        if (roomMessage.has("sender")) {
+            String sender = roomMessage.getString("sender");
+            Reference senderRef = this.matrixUserID2SenderReferenceMapper.buildPractitionerIDAsSenderReference(sender);
             newCommunication.setSender(senderRef);
         }
-        LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.Subject to the appropriate FHIR element");
+        LOG.info(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.Subject to the appropriate FHIR element");
 
-        localComMsg.setSubject(this.buildSubjectReference(pMessageObject));
-//        LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.Recipient to the appropriate FHIR element (normally only one)");
-//        localComMsg.setRecipient(this.buildRecipientReferenceSet(pMessageObject));
-//        LOG.trace(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.Recepient to the appropriate Category (Set)");
-//        localComMsg.setCategory(this.buildCommunicationCategory(pMessageObject));
-//        LOG.debug(".buildDefaultCommunicationMessage(): Created Identifier --> " + localComMsg.toString());
-        return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_SUCCESSFUL);
+        newCommunication.setSubject(this.buildSubjectReference(roomMessage));
+        LOG.info(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.Recipient to the appropriate FHIR element (normally only one)");
+        newCommunication.setRecipient(this.matrixUserID2RecipientReferenceMapper.buildRecipientReferenceSet(roomMessage));
+        LOG.info(".buildDefaultCommunicationMessage(): Set the FHIR::Communication.Recepient to the appropriate Category (Set)");
+        newCommunication.setCategory(this.buildCommunicationCategory(roomMessage));
+        LOG.debug(".buildDefaultCommunicationMessage(): Created Identifier --> {}", newCommunication);
+        return (newCommunication);
     }
 
     // TODO: fix javadoc for buildCommunicationIdentifier()
@@ -456,28 +509,28 @@ public class RoomInstantMessage2Communication
      * @return Identifier A FHIR::Identifier resource (see
      * https://www.hl7.org/fhir/datatypes.html#Identifier)
      */
-    private PayloadTransformationOutcomeEnum buildCommunicationIdentifier(List<Identifier> identifierList, JSONObject roomMessage)
+    private List<Identifier> buildCommunicationIdentifier(JSONObject roomMessage)
+            throws MatrixMessageException, JSONException
     {
-        LOG.debug("buildCommunicationIdentifier(): Entry, for Room Instant Message --> {}", roomMessage);
+        LOG.debug("buildCommunicationIdentifier(): Entry, Room Instant Message (m.room.message) --> {}", roomMessage);
         if (roomMessage == null) {
-            LOG.debug("buildCommunicationIdentifier(): Exit, JSONObject roomMessage is null, returning PAYLOAD_TRANSFORM_FAILURE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE);
+            LOG.error("buildCommunicationIdentifier(): Exit, Room Instant Message (m.room.message) --> pointer is null");
+            throw (new MatrixMessageException("Room Instant Message (m.room.message) --> pointer is null"));
         }
         if (roomMessage.isEmpty()) {
-            LOG.debug("buildCommunicationIdentifier(): Exit, JSONObject roomMessage is empty, returning PAYLOAD_TRANSFORM_FAILURE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE);
+            LOG.debug("buildCommunicationIdentifier(): Exit, Room Instant Message (m.room.message) --> message is empty");
+            throw (new MatrixMessageException("Room Instant Message (m.room.message) --> message is empty"));
         }
         // Create the empty FHIR::Identifier element
         Identifier localResourceIdentifier = new Identifier();
-        // Set the FHIR::Identifier.Use to "OFFICIAL" (we are the source of truth for
-        // this)
+        // Set the FHIR::Identifier.Use to "OFFICIAL" (we are the source of truth for this)
         localResourceIdentifier.setUse(Identifier.IdentifierUse.OFFICIAL);
         // Set the FHIR::Identifier.System to Pegacorn (it's our ID we're creating)
         localResourceIdentifier.setSystem(pegacornSystemReference.getDefaultIdentifierSystemForRoomServerDetails());
         // Set the FHIR::Identifier.Value to the "event_id" from the RoomServer system
         if (!roomMessage.has("event_id")) {
-            LOG.debug("buildCommunicationIdentifier(): Exit, JSONObject roomMessage is no event_id, returning PAYLOAD_TRANSFORM_FAILURE_INGRES_CONTENT_INCOMPLETE");
-            return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE_INGRES_CONTENT_INCOMPLETE);
+            LOG.error("buildCommunicationIdentifier(): Exit, Room Instant Message (m.room.message) --> message does not contain an entity_id");
+            throw (new MatrixMessageException("Room Instant Message (m.room.message) --> message does not contain an entity_id"));
         }
         localResourceIdentifier.setValue(roomMessage.getString("event_id"));
         // Create a FHIR::Period as a container for the valid message start/end times
@@ -493,48 +546,10 @@ public class RoomInstantMessage2Communication
         // not expire point)
         localResourceIdentifier.setPeriod(lEventIDPeriod);
         LOG.trace("buildCommunicationIdentifier(): Created Identifier --> {}", localResourceIdentifier);
+        ArrayList<Identifier> identifierList = new ArrayList<Identifier>();
         identifierList.add(localResourceIdentifier);
         LOG.debug("buildCommunicationIdentifier(): Exit, Created Identifier --> {} ", localResourceIdentifier);
-        return (PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_SUCCESSFUL);
-    }
-
-    /**
-     * This method constructs a set of FHIR::Reference entities for the
-     * Recipients of the message based on the RoomServer.RoomID (i.e.
-     * "room_id").
-     * <p>
-     * In this release, only a single Recipient is expected and managed.
-     * <p>
-     * The method extracts the RoomServer.RoomID from the RoomServer.RoomMessage
-     * and attempts to find the corresponding FHIR::Reference in the
-     * MatrixRoomID2ResourceReferenceMap cache map.
-     * <p>
-     * The resulting single FHIR::Reference is then added to a
-     * List<FHIR::Reference>
-     * and returned. If no Reference is found, then an empty set is returned.
-     *
-     * @param pRoomServerMessage A Matrix(R) "m.room.message" message (see
-     * https://matrix.org/docs/spec/client_server/r0.6.0#room-event-fields)
-     * @return Reference The List<FHIR::Reference> for the Recipients (see
-     * https://www.hl7.org/fhir/references.html#Reference)
-     */
-    private List<Reference> buildRecipientReferenceSet(JSONObject pRoomServerMessage)
-    {
-        LOG.debug(".buildRecipientReference(): for Event --> " + pRoomServerMessage.getString("room_id"));
-        // Create the empty List<Reference> set
-        List<Reference> localRecipientReferenceSet = new ArrayList<Reference>();
-        // Get the associated Reference from the RoomServer.RoomID ("room_id")
-        Reference localRecipientReference = theRoom2ReferenceIDMap.getFHIRResourceReferenceFromRoomID(pRoomServerMessage.getString("room_id"));
-        // If there are no References associated to the RoomServer.RoomID, return an
-        // empty set.
-        if (localRecipientReference == null) {
-            LOG.debug("buildRecipientReferenceSet(): No mapped Room-to-FHIR::Resource, returning null");
-            return (localRecipientReferenceSet);
-        }
-        // Add the FHIR::Reference to the Recipient Reference Set (there is only one).
-        localRecipientReferenceSet.add(localRecipientReference);
-        LOG.debug(".buildRecipientReferenceSet(): Created Reference --> " + localRecipientReference.toString());
-        return (localRecipientReferenceSet);
+        return (identifierList);
     }
 
     /**
@@ -557,16 +572,15 @@ public class RoomInstantMessage2Communication
      * https://www.hl7.org/fhir/references.html#Reference)
      */
     private Reference buildSubjectReference(JSONObject roomIM)
-            throws MatrixMessageException, TransformErrorException, WrongContentTypeException, TransformErrorException
+            throws MatrixMessageException, JSONException
     {
-        LOG.debug("buildSubjectReference(): Entry, for Matrix Room Instant Message --> {}", roomIM);
+        LOG.info("buildSubjectReference(): Entry, for Matrix Room Instant Message --> {}", roomIM);
         // For now, we are assuming it is a "FHIR::Group"
-        if(!roomIM.has("room_id")){
-            throw( new MatrixMessageException("Matrix Room Instant Message --> has not -room_id-"));
+        if (!roomIM.has("room_id")) {
+            throw (new MatrixMessageException("Matrix Room Instant Message --> has not -room_id-"));
         }
-        String roomID = roomIM.getString("room_id");
-        Reference subjectReference = this.theRoom2ReferenceIDMap.getFHIRResourceReferenceFromRoomID(roomID);
-        LOG.debug(".buildSubjectReference(): Created Reference --> {}", subjectReference);
+        Reference subjectReference = this.roomID2GroupReference.buildGroupReferenceFromRoomID(roomIM);
+        LOG.info(".buildSubjectReference(): Created Reference --> {}", subjectReference);
         return (subjectReference);
     }
 

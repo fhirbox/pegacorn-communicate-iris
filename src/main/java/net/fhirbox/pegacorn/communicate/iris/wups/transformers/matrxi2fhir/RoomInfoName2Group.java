@@ -8,7 +8,7 @@ package net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir;
 import java.util.Date;
 import javax.inject.Inject;
 
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrixRoomID2MatrixRoomNameMap;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.IdentifierBuilders;
@@ -40,8 +40,11 @@ public class RoomInfoName2Group {
 
     private static final Logger LOG = LoggerFactory.getLogger(RoomInfoName2Group.class);
 
-    PegacornSystemReference pegacornSystemReference = new PegacornSystemReference();
-    CommunicateProperties communicateProperties = new CommunicateProperties();
+    @Inject
+    PegacornSystemReference pegacornSystemReference;
+
+    @Inject
+    CommunicateProperties communicateProperties;
 
     @Inject
     IdentifierBuilders identifierBuilders;
@@ -52,9 +55,11 @@ public class RoomInfoName2Group {
     @Inject
     MatrixRoomID2MatrixRoomNameMap roomNameMap;
 
-    PegacornCommunicateValueReferences pegacornCommunicateValueReferences = new PegacornCommunicateValueReferences();
+    @Inject
+    PegacornCommunicateValueReferences pegacornCommunicateValueReferences;
+
     
-    public Bundle matrixRoomNameEvent2FHIRGroupBundle(String theMessage) throws TransformErrorException {
+    public Bundle matrixRoomNameEvent2FHIRGroupBundle(String theMessage) throws MinorTransformationException {
         Bundle newBundleElement = new Bundle();
         LOG.debug(".matrixRoomNameEvent2FHIRGroupBundle(): Message In --> " + theMessage);
         Group groupElement = new Group();
@@ -76,7 +81,7 @@ public class RoomInfoName2Group {
             newBundleElement.setTimestamp(new Date());
             return (newBundleElement);
         } catch (JSONException jsonExtractionError) {
-            throw (new TransformErrorException("matrixRoomNameEvent2FHIRGroupBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
+            throw (new MinorTransformationException("matrixRoomNameEvent2FHIRGroupBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
         }
     }
     
@@ -93,7 +98,7 @@ public class RoomInfoName2Group {
         return (messageHeaderElement);
     }
 
-    public Group roomInfoNameEvent2Group(String theMessage) throws TransformErrorException {
+    public Group roomInfoNameEvent2Group(String theMessage) throws MinorTransformationException {
         LOG.debug(".roomInfoNameEvent2Group(): Message In --> " + theMessage);
         Group localGroupElement;
         LOG.trace(".roomInfoNameEvent2Group(): Message to be converted --> " + theMessage);
@@ -116,14 +121,14 @@ public class RoomInfoName2Group {
      * @return Communication A FHIR::Communication resource (see
      * https://www.hl7.org/fhir/group.html)
      */
-    private Group buildGroupEntityFromRoomNameEvent(JSONObject pRoomServerEvent) throws TransformErrorException{
+    private Group buildGroupEntityFromRoomNameEvent(JSONObject pRoomServerEvent) throws MinorTransformationException{
         LOG.debug(".buildGroupEntityFromRoomNameEvent() for Event --> " + pRoomServerEvent);
         if( !pRoomServerEvent.has("content") ){
-            throw(new TransformErrorException("m.room.name event has no -content-"));
+            throw(new MinorTransformationException("m.room.name event has no -content-"));
         }
         JSONObject roomServerEventContent = pRoomServerEvent.getJSONObject("content");
         if( !roomServerEventContent.has("name")){
-            throw(new TransformErrorException("m.room.name event has no -name-"));
+            throw(new MinorTransformationException("m.room.name event has no -name-"));
         }
         // Create the empty FHIR::Group entity.
         Group localGroupEntity = new Group();

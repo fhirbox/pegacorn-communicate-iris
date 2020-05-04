@@ -32,7 +32,7 @@ import java.util.Set;
 import javax.enterprise.context.ApplicationScoped;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.MatrixMessageException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.PayloadTransformationOutcomeEnum;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.WrongContentTypeException;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.CodeableConcept;
@@ -74,7 +74,7 @@ public class MatrixMessageContent2MediaReferenceSet
      * @return a List of References
      */
     public Reference buildMediaReferenceSet(JSONObject roomIMContent, Date messageDate) 
-            throws MatrixMessageException, TransformErrorException, WrongContentTypeException, JSONException
+            throws MatrixMessageException, MinorTransformationException, WrongContentTypeException, JSONException
     {
         LOG.debug("getReferenceSet(), Entry, Message Payload --> {}", roomIMContent);
         // Check for validity of the payload message & return -null- if there is a problem
@@ -121,12 +121,12 @@ public class MatrixMessageContent2MediaReferenceSet
      * <p>
      * @return an Enum stating the success of the transformation
      */
-    private Reference buildImageReference(JSONObject mediaMessageContent, Date messageDate) throws WrongContentTypeException, TransformErrorException, JSONException
+    public Reference buildImageReference(JSONObject mediaMessageContent, Date messageDate) throws WrongContentTypeException, MinorTransformationException, JSONException
     {
         LOG.debug("buildImageReference(): Entry, Instant Message Content {} ", mediaMessageContent);
         if (mediaMessageContent == null) {
             LOG.error("buildImageReference(): Instant Message Content is null");
-            throw (new TransformErrorException("Instant Message Content is null"));
+            throw (new MinorTransformationException("Instant Message Content is null"));
         }
         // First, check that it is, in fact, an message with an image
         LOG.trace("buildImageReference(): Checking to ensure the -msgtype- is m.image");
@@ -181,14 +181,14 @@ public class MatrixMessageContent2MediaReferenceSet
      * @return A FHIR::Reference resource (see
      * https://www.hl7.org/fhir/references.html#Reference)
      */
-    private Reference buildVideoReference(JSONObject mediaMessageContent, Date messageDate)
-            throws WrongContentTypeException, TransformErrorException, JSONException
+    public Reference buildVideoReference(JSONObject mediaMessageContent, Date messageDate)
+            throws WrongContentTypeException, MinorTransformationException, JSONException
     {
         // TODO : Add the additional information (e.g. Thumbnail, Duration etc.) to an "extension" of the Media Reference?
         LOG.debug("buildVideoReference(): Entry, Instant Message Content {} ", mediaMessageContent);
         if (mediaMessageContent == null) {
             LOG.error("buildVideoReference(): Instant Message Content is null");
-            throw (new TransformErrorException("Instant Message Content is null"));
+            throw (new MinorTransformationException("Instant Message Content is null"));
         }
         // First, check that it is, in fact, an message with an image
         LOG.trace("buildVideoReference(): Checking to ensure the -msgtype- is m.video");
@@ -240,13 +240,13 @@ public class MatrixMessageContent2MediaReferenceSet
      * https://www.hl7.org/fhir/references.html#Reference)
      */
     public Reference buildAudioReference(JSONObject mediaMessageContent, Date messageDate)
-            throws WrongContentTypeException, TransformErrorException, JSONException
+            throws WrongContentTypeException, MinorTransformationException, JSONException
     {
         // TODO : Add the additional information (e.g. Thumbnail, Duration etc.) to an "extension" of the Media Reference?
         LOG.debug("buildAudioReference(): Entry, Instant Message Content {} ", mediaMessageContent);
         if (mediaMessageContent == null) {
             LOG.error("buildAudioReference(): Instant Message Content is null");
-            throw (new TransformErrorException("Instant Message Content is null"));
+            throw (new MinorTransformationException("Instant Message Content is null"));
         }
         // First, check that it is, in fact, an message with an image
         LOG.trace("buildAudioReference(): Checking to ensure the -msgtype- is m.audio");

@@ -25,10 +25,10 @@ import javax.annotation.Resource;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.jms.ConnectionFactory;
+import net.fhirbox.pegacorn.communicate.iris.IrisWUPIntersectPoints;
 
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.jms.JmsComponent;
-
 
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
@@ -41,16 +41,17 @@ import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.communicate.iris.wups.matrixeventreceiver.*;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.*;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.CommunicationSubjectTypeCheck;
-import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.RoomServerMessageSplitter;
+import net.fhirbox.pegacorn.communicate.iris.wups.matrixeventreceiver.IncomingMatrixMessageSplitter;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.fhir2matrix.helpers.*;
-
+import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.UoWMatrixMessageExtraction;
 
 import org.apache.camel.LoggingLevel;
 
 @ApplicationScoped
-public class MatrixEvents2FHIR extends RouteBuilder {
+public class Matrix2FHIRTransformerWUP extends RouteBuilder
+{
 
-    private static final Logger LOG = LoggerFactory.getLogger(MatrixEvents2FHIR.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Matrix2FHIRTransformerWUP.class);
 
     private static final String RAW_ROOMSERVER_MESSAGES = "direct:roomServerMessages";
 
@@ -65,7 +66,7 @@ public class MatrixEvents2FHIR extends RouteBuilder {
     private static final String EVENT_M_ROOM_REDACTION = "direct:queueEvent-m.room.redaction";
     private static final String EVENT_M_ROOM_MESSAGE = "direct:queueEvent-m.room.message";
     private static final String EVENT_M_ROOM_NAME = "direct:queueEvent-m.room.name";
-    
+
     private static final String EVENT_ROOM_CREATE_TO_COMMUNICATION = "direct:queueEvent-RoomCreate2Communication";
     private static final String EVENT_ROOM_CREATE_TO_GROUP = "direct:queueEvent-RoomCreate2Group";
 
@@ -76,7 +77,8 @@ public class MatrixEvents2FHIR extends RouteBuilder {
     private static final String RECIPIENT_IS_A_GROUP = "direct:recipient_is_a_group";
     private static final String RECIPIENT_IS_UNKNOWN = "direct:recipient_is_unkown";
 
-    protected CommunicateProperties deploymentProperties = new CommunicateProperties();
+    @Inject
+    CommunicateProperties deploymentProperties;
 
     @Inject
     RoomInstantMessage2Communication roomMessage2Communication;
@@ -88,24 +90,30 @@ public class MatrixEvents2FHIR extends RouteBuilder {
     IncomingEventListValidator messageValidator;
 
     @Inject
-    RoomServerMessageSplitter roomServerMessageSplitter;
-    
-    @Inject 
+    IncomingMatrixMessageSplitter roomServerMessageSplitter;
+
+    @Inject
     RoomCreate2CommunicationCreate roomState2Communication;
-    
-    @Inject 
+
+    @Inject
     RoomCreate2GroupCreate roomState2Group;
-    
+
     @Inject
     RoomInfoName2Group roomName2Group;
+
+    @Inject
+    IrisWUPIntersectPoints wupHandoverPoints;
     
+    @Inject
+    UoWMatrixMessageExtraction messageExtractor;
+
     @Resource(mappedName = "java:jboss/DefaultJMSConnectionFactory")
     protected ConnectionFactory connectionFactory;
-    
 
     @Override
-    public void configure() throws Exception {
-    	
+    public void configure() throws Exception
+    {
+
         if (getContext().hasComponent("jms") == null) {
             JmsComponent component = new JmsComponent();
             component.setConnectionFactory(connectionFactory);
@@ -113,60 +121,51 @@ public class MatrixEvents2FHIR extends RouteBuilder {
         }
 
         LOG.info(".configure(): Iris Room Event (RoomServer --> Iris) Endpoint = " + deploymentProperties.getIrisEndPointForRoomServerEvent());
-        
-        from(deploymentProperties.getIrisEndPointForRoomServerEvent())
-                .routeId("MatrixEvents2FHIR-RoomServer2Iris-Route -->")
-                .transform(simple("${bodyAs(String)}"))
-                .log(LoggingLevel.DEBUG, "Message received!!!")
-                .bean(messageValidator, "validateEventSetMessage")
-                .log(LoggingLevel.DEBUG, "Message Validated, Forwarding!!!")
-                .to(ExchangePattern.InOnly, RAW_ROOMSERVER_MESSAGES)
-                .transform().simple("{}")
-                .end();
 
-        from(RAW_ROOMSERVER_MESSAGES)
+        from(wupHandoverPoints.getRAWMatrixRoomServerMessagePoint())
                 .routeId("MatrixEvents2FHIR-Message2EventIterator-Route")
                 .log(LoggingLevel.DEBUG, "RoomServer Message Split and Distribution")
-                .split().method(roomServerMessageSplitter, "splitMessageIntoEvents")
+                .split().method(messageExtractor, "extractIndividualIngresObjects")
                 .choice()
-                    .when(simple("${body} contains 'm.room.aliases'")).to(EVENT_M_ROOM_ALIASES)
-                    .when(simple("${body} contains 'm.room.canonical_aliases'")).to(EVENT_M_ROOM_CANONICAL_ALIASES)
-                    .when(simple("${body} contains 'm.room.create'")).to(EVENT_M_ROOM_CREATE)
-                    .when(simple("${body} contains 'm.room.join_rules'")).to(EVENT_M_ROOM_JOIN_RULES)
-                    .when(simple("${body} contains 'm.room.member'")).to(EVENT_M_ROOM_MEMBER)
-                    .when(simple("${body} contains 'm.room.power_levels'")).to(EVENT_M_ROOM_POWER_LEVELS)
-                    .when(simple("${body} contains 'm.room.redaction'")).to(EVENT_M_ROOM_REDACTION)
-                    .when(simple("${body} contains 'm.room.message'")).to(EVENT_M_ROOM_MESSAGE)
-                    .when(simple("${body} contains 'm.room.name'")).to(EVENT_M_ROOM_NAME)
-                    .otherwise().to(EVENT_UNHANDLED)
+                .when(simple("${body} contains 'm.room.aliases'")).to(EVENT_M_ROOM_ALIASES)
+                .when(simple("${body} contains 'm.room.canonical_aliases'")).to(EVENT_M_ROOM_CANONICAL_ALIASES)
+                .when(simple("${body} contains 'm.room.create'")).to(EVENT_M_ROOM_CREATE)
+                .when(simple("${body} contains 'm.room.join_rules'")).to(EVENT_M_ROOM_JOIN_RULES)
+                .when(simple("${body} contains 'm.room.member'")).to(EVENT_M_ROOM_MEMBER)
+                .when(simple("${body} contains 'm.room.power_levels'")).to(EVENT_M_ROOM_POWER_LEVELS)
+                .when(simple("${body} contains 'm.room.redaction'")).to(EVENT_M_ROOM_REDACTION)
+                .when(simple("${body} contains 'm.room.message'")).to(EVENT_M_ROOM_MESSAGE)
+                .when(simple("${body} contains 'm.room.name'")).to(EVENT_M_ROOM_NAME)
+                .otherwise().to(EVENT_UNHANDLED)
                 .endChoice()
                 .end();
 
         from(EVENT_M_ROOM_MESSAGE)
                 .routeId("MatrixEvents2FHIR-m_room_message-Route")
-                .log(LoggingLevel.INFO,"m.room.message --> ${body}")
-                .bean(roomMessage2Communication, "matrix2CommunicationBundle")
+                .log(LoggingLevel.INFO, "m.room.message --> ${body}")
+                .bean(roomMessage2Communication, "convertMatrixInstantMessage2FHIRElements")
+                .split(body())
                 .multicast().parallelProcessing()
-                    .to(RECIPIENT_IS_A_PRACTIONER, RECIPIENT_IS_A_PRACTROLE, RECIPIENT_IS_A_CARETEAM, RECIPIENT_IS_A_ORGANIZATION, RECIPIENT_IS_A_GROUP, RECIPIENT_IS_UNKNOWN)
-                    .end()
+                .to(RECIPIENT_IS_A_PRACTIONER, RECIPIENT_IS_A_PRACTROLE, RECIPIENT_IS_A_CARETEAM, RECIPIENT_IS_A_ORGANIZATION, RECIPIENT_IS_A_GROUP, RECIPIENT_IS_UNKNOWN)
+                .end()
                 .end();
 
         from(EVENT_M_ROOM_NAME)
                 .routeId("MatrixEvents2FHIR-m_room_name-Route")
-                .log(LoggingLevel.INFO,"m.room.name --> ${body}")
+                .log(LoggingLevel.INFO, "m.room.name --> ${body}")
                 .bean(roomName2Group, "matrixRoomNameEvent2FHIRGroupBundle")
                 .to(deploymentProperties.getRawGroupTopic())
                 .end();
-                
+
         from(EVENT_M_ROOM_ALIASES)
                 .routeId("MatrixEvents2FHIR-m_room_aliases-Route")
-                .log(LoggingLevel.INFO,"m.room.aliases --> ${body}")
+                .log(LoggingLevel.INFO, "m.room.aliases --> ${body}")
                 .to("stub:nowhere")
                 .end();
 
         from(EVENT_M_ROOM_CANONICAL_ALIASES)
                 .routeId("MatrixEvents2FHIR-m_room_canonical-aliases-Route")
-                .log(LoggingLevel.INFO,"m.room.canonical_aliases --> ${body}")
+                .log(LoggingLevel.INFO, "m.room.canonical_aliases --> ${body}")
                 .to("stub:nowhere")
                 .end();
 
@@ -174,19 +173,19 @@ public class MatrixEvents2FHIR extends RouteBuilder {
                 .routeId("MatrixEvents2FHIR-m_room_create-Route")
                 .log(LoggingLevel.INFO, "m.room.create --> ${body}")
                 .multicast().parallelProcessing()
-                    .to(EVENT_ROOM_CREATE_TO_COMMUNICATION, EVENT_ROOM_CREATE_TO_GROUP)
-                    .end()
+                .to(EVENT_ROOM_CREATE_TO_COMMUNICATION, EVENT_ROOM_CREATE_TO_GROUP)
+                .end()
                 .end();
 
         from(EVENT_M_ROOM_JOIN_RULES)
                 .routeId("MatrixEvents2FHIR-m_room_join_rules-Route")
-                .log(LoggingLevel.INFO,"m.room.join_rules --> ${body}")
+                .log(LoggingLevel.INFO, "m.room.join_rules --> ${body}")
                 .to("stub:nowhere")
                 .end();
 
         from(EVENT_M_ROOM_MEMBER)
                 .routeId("MatrixEvents2FHIR-m_room_member-Route")
-                .log(LoggingLevel.INFO,"m.room.member --> ${body}")
+                .log(LoggingLevel.INFO, "m.room.member --> ${body}")
                 .to("stub:nowhere")
                 .end();
 
@@ -201,15 +200,14 @@ public class MatrixEvents2FHIR extends RouteBuilder {
                 .log(LoggingLevel.INFO, "m.room.redaction --> ${body}")
                 .to("stub:nowhere")
                 .end();
-        
+
         from(EVENT_UNHANDLED)
                 .routeId("MatrixEvents2FHIR-unhandled_event-Route")
                 .log(LoggingLevel.INFO, "undhandled event --> ${body}")
                 .to("stub:nowhere")
                 .end();
 
-    // Routing for Messages (actual chat messages) 
-    
+        // Routing for Messages (actual chat messages) 
         from(RECIPIENT_IS_A_PRACTIONER)
                 .routeId("MatrixEvents2FHIR-CommunicationToAPractitioner-Route")
                 .filter().method(communicationSubjectCheck, "isSubjectAPractitioner")
@@ -239,21 +237,22 @@ public class MatrixEvents2FHIR extends RouteBuilder {
                 .routeId("MatrixEvents2FHIR-CommunicationRecipientUnknown")
                 .filter().method(communicationSubjectCheck, "isSubjectAnOther")
                 .to(deploymentProperties.getRawCommunicationTopic());
-        
-    // routes for Processing Room Events --> m.room.create
+
+        // routes for Processing Room Events --> m.room.create
         from(EVENT_ROOM_CREATE_TO_COMMUNICATION)
                 .routeId("MatrixEvents2FHIR-m.room.create2Communication-Route")
                 .bean(roomState2Communication, "matrix2CommunicationBundle")
                 .to(deploymentProperties.getRawCommunicationTopic());
-        
+
         from(EVENT_ROOM_CREATE_TO_GROUP)
                 .routeId("MatrixEvents2FHIR-m.room.create2Group-Route")
                 .bean(roomState2Group, "matrixRoomCreateEvent2FHIRGroupBundle")
                 .to(deploymentProperties.getRawGroupTopic());
-    
+
     }
 
-    protected RouteDefinition asyncDistributeTo(RouteDefinition route, String shardName) {
+    protected RouteDefinition asyncDistributeTo(RouteDefinition route, String shardName)
+    {
         route
                 .to(ExchangePattern.InOnly, deploymentProperties.getRawCommunicationTopic());
         return route;

@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import net.fhirbox.pegacorn.referencevalues.communication.PegacornCommunicateValueReferences;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.IdentifierBuilders;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 
@@ -61,15 +61,18 @@ public class RoomCreate2GroupCreate {
 
     private static final Logger LOG = LoggerFactory.getLogger(RoomCreate2GroupCreate.class);
 
-    PegacornSystemReference pegacornSystemReference = new PegacornSystemReference();
-    CommunicateProperties communicateProperties = new CommunicateProperties();
+    @Inject
+    PegacornSystemReference pegacornSystemReference;
+    
+    @Inject
+    CommunicateProperties communicateProperties;
     
     @Inject
     IdentifierBuilders identifierBuilders;
     
     PegacornCommunicateValueReferences pegacornCommunicateValueReferences = new PegacornCommunicateValueReferences();
     
-     public Bundle matrixRoomCreateEvent2FHIRGroupBundle(String theMessage) throws TransformErrorException {
+     public Bundle matrixRoomCreateEvent2FHIRGroupBundle(String theMessage) throws MinorTransformationException {
         Bundle newBundleElement = new Bundle();
         LOG.debug(".matrixRoomCreateEvent2FHIRGroupBundle(): Message In --> " + theMessage);
         Group groupElement = new Group();
@@ -91,7 +94,7 @@ public class RoomCreate2GroupCreate {
             newBundleElement.setTimestamp(new Date());
             return (newBundleElement);
         } catch (JSONException jsonExtractionError) {
-            throw (new TransformErrorException("matrixRoomCreateEvent2FHIRGroupBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
+            throw (new MinorTransformationException("matrixRoomCreateEvent2FHIRGroupBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
         }
     }
     
@@ -108,7 +111,7 @@ public class RoomCreate2GroupCreate {
         return (messageHeaderElement);
     }
 
-    public Group roomCreateEvent2Group(String theMessage) throws TransformErrorException {
+    public Group roomCreateEvent2Group(String theMessage) throws MinorTransformationException {
         LOG.debug(".doTransform(): Message In --> " + theMessage);
         Group localGroupElement = new Group();
         LOG.trace("Message to be converted --> " + theMessage);

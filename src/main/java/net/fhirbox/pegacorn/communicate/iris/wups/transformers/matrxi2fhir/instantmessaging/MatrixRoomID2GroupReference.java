@@ -9,7 +9,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.MatrixMessageException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.PayloadTransformationOutcomeEnum;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.WrongContentTypeException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
@@ -60,7 +60,7 @@ public class MatrixRoomID2GroupReference
      * https://www.hl7.org/fhir/references.html#Reference)
      */
     public Reference buildGroupReferenceFromRoomID(JSONObject roomIM)
-            throws MatrixMessageException, TransformErrorException, WrongContentTypeException, JSONException
+            throws MatrixMessageException, JSONException
     {
         LOG.debug("buildSubjectReference(): Entry, for Matrix Room Instant Message --> {}", roomIM);
         // Get the associated Reference from the RoomServer.RoomID ("room_id")

@@ -3,10 +3,11 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common;
+package net.fhirbox.pegacorn.communicate.iris.wups.matrixeventreceiver;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import javax.enterprise.context.ApplicationScoped;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import org.slf4j.Logger;
@@ -16,13 +17,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author Mark A. Hunter (ACT Health)
  */
-public class RoomServerMessageSplitter {
+@ApplicationScoped
+public class IncomingMatrixMessageSplitter {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RoomServerMessageSplitter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(IncomingMatrixMessageSplitter.class);
 
-    public List<String> splitMessageIntoEvents(String pRoomServerMessage) {
+    public LinkedHashSet<String> splitMessageIntoEvents(String pRoomServerMessage) {
         LOG.debug("splitMessageIntoEvents(): Entry: Message to split -->" + pRoomServerMessage);
-        ArrayList<String> eventSet = new ArrayList<String>();
+        LinkedHashSet<String> eventSet = new LinkedHashSet<String>();
         if (pRoomServerMessage.isEmpty()) {
             LOG.debug("splitMessageIntoEvents(): Exit: Empty message");
             return (eventSet);

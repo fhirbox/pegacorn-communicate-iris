@@ -16,7 +16,7 @@ import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.RoomC
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.RoomInfoName2Group;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.instantmessaging.RoomInstantMessage2Communication;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.CommunicationSubjectTypeCheck;
-import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.RoomServerMessageSplitter;
+import net.fhirbox.pegacorn.communicate.iris.wups.matrixeventreceiver.IncomingMatrixMessageSplitter;
 
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.jms.JmsComponent;

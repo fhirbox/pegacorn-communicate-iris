@@ -38,7 +38,7 @@ public class CommunicationSubjectTypeCheck {
     }
 
     public Communication getCommunicationElementFromBundle(Bundle theBundle) {
-        LOG.debug("getCommunicationElementFromBundle(): Entry");
+        LOG.info("getCommunicationElementFromBundle(): Entry");
         LOG.trace("getCommunicationElementFromBundle(): Bundle Element --> " + fhirResourceParser.encodeResourceToString(theBundle));
         if (!theBundle.hasType()) {
             LOG.debug("getCommunicationElementFromBundle(): Exit, Bundle has no Type");
@@ -59,7 +59,7 @@ public class CommunicationSubjectTypeCheck {
             if (testBundle.hasResource()) {
                 if (testBundle.getResource().getResourceType() == ResourceType.Communication) {
                     Communication communicationElement = (Communication) (testBundle.getResource());
-                    LOG.trace("getCommunicationElementFromBundle(): Communication Element --> " + fhirResourceParser.encodeResourceToString(communicationElement));
+                    LOG.info("getCommunicationElementFromBundle(): Communication Element --> " + fhirResourceParser.encodeResourceToString(communicationElement));
                     return (communicationElement);
                 }
             }

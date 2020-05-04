@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.enterprise.context.ApplicationScoped;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.MatrixMessageException;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.WrongContentTypeException;
 import org.hl7.fhir.r4.model.Communication;
 import org.hl7.fhir.r4.model.StringType;
@@ -47,7 +47,7 @@ public class MatrixTextMessageContent2CommunicationPayload
     private static final Logger LOG = LoggerFactory.getLogger(MatrixTextMessageContent2CommunicationPayload.class);
 
     public List<Communication.CommunicationPayloadComponent> buildMTextPayload(JSONObject roomIMContent)
-            throws MatrixMessageException, TransformErrorException, WrongContentTypeException, JSONException
+            throws MatrixMessageException, MinorTransformationException, WrongContentTypeException, JSONException
     {
         LOG.debug("buildMTextPayload(): Entry, pRoomMessage.content --> {}", roomIMContent);
         ArrayList<Communication.CommunicationPayloadComponent> payLoadList = new ArrayList<Communication.CommunicationPayloadComponent>();

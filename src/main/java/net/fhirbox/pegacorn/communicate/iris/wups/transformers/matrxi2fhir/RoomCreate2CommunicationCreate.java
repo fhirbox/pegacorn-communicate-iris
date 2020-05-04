@@ -4,6 +4,7 @@ import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.insta
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import org.hl7.fhir.r4.model.CodeableConcept;
@@ -16,7 +17,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.IdentifierBuilders;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
@@ -27,6 +28,7 @@ import org.hl7.fhir.r4.model.MessageHeader;
 import org.hl7.fhir.r4.model.StringType;
 import org.json.JSONException;
 
+@ApplicationScoped
 public class RoomCreate2CommunicationCreate {
 
     private static final Logger LOG = LoggerFactory.getLogger(RoomInstantMessage2Communication.class);
@@ -40,7 +42,7 @@ public class RoomCreate2CommunicationCreate {
 
     PegacornCommunicateValueReferences pegacornCommunicateValueReferences = new PegacornCommunicateValueReferences();
 
-    public Bundle matrix2CommunicationBundle(String theMessage) throws TransformErrorException {
+    public Bundle matrix2CommunicationBundle(String theMessage) throws MinorTransformationException {
         Bundle newBundleElement = new Bundle();
         LOG.debug(".matrix2CommunicationBundle(): Message In --> " + theMessage);
         Communication communicationElement = new Communication();
@@ -62,7 +64,7 @@ public class RoomCreate2CommunicationCreate {
             newBundleElement.setTimestamp(new Date());
             return (newBundleElement);
         } catch (JSONException jsonExtractionError) {
-            throw (new TransformErrorException("matrix2CommunicationBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
+            throw (new MinorTransformationException("matrix2CommunicationBundle(): Bad JSON Message Structure -> ", jsonExtractionError));
         }
     }
 
@@ -79,7 +81,7 @@ public class RoomCreate2CommunicationCreate {
         return (messageHeaderElement);
     }
 
-    public Communication roomCreateEvent2Communication(String theMessage) throws TransformErrorException {
+    public Communication roomCreateEvent2Communication(String theMessage) throws MinorTransformationException {
         LOG.debug(".roomCreateEvent2Communication(): Entry, Message In --> " + theMessage);
         Communication communicationElement = new Communication();
         LOG.trace(".roomCreateEvent2Communication(): Message to be converted --> " + theMessage);

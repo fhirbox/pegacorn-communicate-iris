@@ -34,7 +34,7 @@ import org.hl7.fhir.r4.model.StringType;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.context.FhirVersionEnum;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.*;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.*;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
@@ -118,9 +118,9 @@ public class Communication2RoomMessage {
      * @return A list of Matrix(R) "m.room.message" message (see
      * https://matrix.org/docs/spec/client_server/r0.6.0#room-event-fields)
      *
-     * @throws TransformErrorException
+     * @throws MinorTransformationException
      */
-    public List<JSONObject> transfromCommunicatinToMatrixRoomMessageSet(Communication communicationEvent) throws TransformErrorException {
+    public List<JSONObject> transfromCommunicatinToMatrixRoomMessageSet(Communication communicationEvent) throws MinorTransformationException {
         LOG.debug(".doTransform(): Entry, Message In --> {}", communicationEvent);
         Communication localCommunicationEvent = new Communication();
         LOG.trace("Message to be converted --> " + fhirParser.encodeResourceToString(communicationEvent));
@@ -205,7 +205,7 @@ public class Communication2RoomMessage {
             ArrayList<JSONObject> messageList = new ArrayList<JSONObject>();
             return (messageList);
         } catch (JSONException jsonExtractionError) {
-            throw (new TransformErrorException("Bad JSON Message Structure -> ", jsonExtractionError));
+            throw (new MinorTransformationException("Bad JSON Message Structure -> ", jsonExtractionError));
         }
     }
 

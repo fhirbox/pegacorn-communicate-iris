@@ -6,6 +6,7 @@ import javax.inject.Inject;
 import javax.jms.ConnectionFactory;
 import net.fhirbox.pegacorn.communicate.iris.IrisWUPIntersectPoints;
 import net.fhirbox.pegacorn.communicate.iris.wups.matrixeventreceiver.IncomingEventListValidator;
+import net.fhirbox.pegacorn.communicate.iris.wups.matrixeventreceiver.IncomingMatrixEventUoWEncapsulator;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
@@ -29,6 +30,9 @@ public class MatrixAppServicesReceiverWUP extends RouteBuilder {
     
     @Inject
     IrisWUPIntersectPoints wupHandoverPoints;
+    
+    @Inject
+    IncomingMatrixEventUoWEncapsulator incomingMessageHandler;
 
     @Override
     public void configure() throws Exception {
@@ -46,6 +50,7 @@ public class MatrixAppServicesReceiverWUP extends RouteBuilder {
                 .transform(simple("${bodyAs(String)}"))
                 .log(LoggingLevel.DEBUG, "Message received!!!")
                 .bean(messageValidator, "validateEventSetMessage")
+                .bean(incomingMessageHandler, "encapsulateMatrixMessage")
                 .log(LoggingLevel.DEBUG, "Message Validated, Forwarding!!!")
                 .to(ExchangePattern.InOnly, wupHandoverPoints.getRAWMatrixRoomServerMessagePoint())
                 .transform().simple("{}")

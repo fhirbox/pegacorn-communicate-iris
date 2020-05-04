@@ -25,8 +25,9 @@ package net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.inst
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MatrixMessageException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.PayloadTransformationOutcomeEnum;
-import net.fhirbox.pegacorn.communicate.iris.wups.common.TransformErrorException;
+import net.fhirbox.pegacorn.communicate.iris.wups.common.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrixRoomID2ResourceReferenceMap;
 import net.fhirbox.pegacorn.communicate.iris.wups.common.cachedmaps.MatrxUserID2PractitionerIDMap;
 import net.fhirbox.pegacorn.communicate.iris.wups.transformers.matrxi2fhir.common.IdentifierBuilders;
@@ -42,7 +43,8 @@ import org.slf4j.LoggerFactory;
  * @author mhunter
  */
 @ApplicationScoped
-public class MatrixUserID2CommunicationSenderReference {
+public class MatrixUserID2CommunicationSenderReference
+{
 
     private static final Logger LOG = LoggerFactory.getLogger(MatrixUserID2CommunicationSenderReference.class);
 
@@ -73,15 +75,17 @@ public class MatrixUserID2CommunicationSenderReference {
      * @return Reference The FHIR::Reference for the Sender (see
      * https://www.hl7.org/fhir/references.html#Reference)
      */
-    public Reference buildPractitionerIDAsSenderReference(String matrixUserID) throws TransformErrorException{
+    public Reference buildPractitionerIDAsSenderReference(String matrixUserID) 
+            throws MatrixMessageException
+    {
         LOG.debug("buildSenderReference(): Entry, Sender Matrix User ID --> {} ", matrixUserID);
         if (matrixUserID == null) {
             LOG.error("buildSenderReference(): Exit, No Sender is null");
-            throw( new TransformErrorException(PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE.getPayloadTransformationOutcome()));
+            throw (new MatrixMessageException("buildPractitionerIDAsSenderReference(): Sender string is null"));
         }
         if (matrixUserID.isEmpty()) {
             LOG.error("buildSenderReference(): Exit, the Sender is empty");
-            throw( new TransformErrorException(PayloadTransformationOutcomeEnum.PAYLOAD_TRANSFORM_FAILURE.getPayloadTransformationOutcome()));
+            throw (new MatrixMessageException("buildPractitionerIDAsSenderReference(): Sender string is empty"));
         }
         // Get the associated Practitioner::Identifier from the RoomServer.UserID (sender)
         Identifier localSenderIdentifier = this.theUserID2PractitionerIDMap.getPractitionerIDFromUserName(matrixUserID);
