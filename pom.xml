@@ -70,6 +70,13 @@ language governing permissions and limitations under the License. -->
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>org.jboss.arquillian</groupId>
+                <artifactId>arquillian-bom</artifactId>
+                <version>${version-org.arquillian}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -94,6 +101,14 @@ language governing permissions and limitations under the License. -->
         <dependency>
             <groupId>net.fhirbox.pegacorn</groupId>
             <artifactId>pegacorn-petasos-stub</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+            <scope>compile</scope>
+        </dependency>
+        <!-- Pegacorn Customised Resources -->
+        <dependency>
+            <groupId>net.fhirbox.pegacorn</groupId>
+            <artifactId>pegacorn-fhir-r4-model</artifactId>
             <version>${project.version}</version>
             <type>jar</type>
             <scope>compile</scope>
@@ -126,11 +141,6 @@ language governing permissions and limitations under the License. -->
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- dependency> <groupId>org.wildfly.camel</groupId> <artifactId>wildfly-camel-common</artifactId> 
-        </dependency> <dependency> <groupId>org.wildfly.camel</groupId> <artifactId>wildfly-camel-subsystem-undertow</artifactId> 
-        <exclusions> <exclusion> <groupId>org.apache.camel</groupId> <artifactId>camel-cxf</artifactId> 
-        </exclusion> </exclusions> </dependency> -->
-
         <dependency>
             <groupId>org.jboss.msc</groupId>
             <artifactId>jboss-msc</artifactId>
@@ -167,7 +177,7 @@ language governing permissions and limitations under the License. -->
             <artifactId>jboss-annotations-api_1.3_spec</artifactId>
             <scope>provided</scope>
         </dependency>
-<!--        <dependency>
+        <!--        <dependency>
             <groupId>org.wildfly</groupId>
             <artifactId>wildfly-clustering-infinispan-extension</artifactId>
             <version>${version-org.wildfly}</version>
@@ -180,19 +190,6 @@ language governing permissions and limitations under the License. -->
             <scope>provided</scope>
         </dependency>
 
-        <!-- This dependency includes the HAPI FHIR Server Framework -->
-        <!--       <dependency>
-                    <groupId>ca.uhn.hapi.fhir</groupId>
-                    <artifactId>hapi-fhir-server</artifactId>
-                    <version>${version-ca.uhn.hapi.fhir}</version>
-                    <exclusions>
-                        <exclusion>
-                            <groupId>org.slf4j</groupId>
-                            <artifactId>jcl-over-slf4j</artifactId>
-                        </exclusion>
-                    </exclusions>
-                </dependency>
-        -->
         <!-- This dependency includes the core HAPI-FHIR classes -->
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
@@ -219,20 +216,23 @@ language governing permissions and limitations under the License. -->
             <version>2.7.0</version>
         </dependency>
 
-        <!-- HAPI-FHIR uses Logback for logging support. The logback library is 
-        included automatically by Maven as a part of the hapi-fhir-base dependency, 
-        but you also need to include a logging library. Logback is used here, but 
-        log4j would also be fine. -->
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.1.7</version>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${commons-lang3-version}</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.9.10.1</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.persistence</groupId>
+            <artifactId>javax.persistence</artifactId>
+            <version>2.1.0</version>
         </dependency>
 
         <!-- Infinispan -->
@@ -247,7 +247,7 @@ language governing permissions and limitations under the License. -->
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-commons</artifactId>
             <scope>compile</scope>
-             <version>${version-org.infinispan}</version>
+            <version>${version-org.infinispan}</version>
         </dependency>
         <dependency>
             <groupId>org.jgroups</groupId>
@@ -264,55 +264,46 @@ language governing permissions and limitations under the License. -->
         </dependency>
 
         <!-- logging -->
+
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <scope>test</scope>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.3</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-java</artifactId>
-            <scope>test</scope>
-            <version>2.44.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.opera</groupId>
-            <artifactId>operadriver</artifactId>
-            <scope>test</scope>
-            <version>1.5</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.seleniumhq.selenium</groupId>
-                    <artifactId>selenium-remote-driver</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+      
+        <!-- Testing --> 
+        
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-            <version>4.11</version>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.9.10.1</version>
-            <type>jar</type>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.persistence</groupId>
-            <artifactId>javax.persistence</artifactId>
-            <version>2.1.0</version>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+         <dependency>
+             <groupId>org.jboss.arquillian.junit</groupId>
+             <artifactId>arquillian-junit-core</artifactId>
+             <scope>test</scope>
+         </dependency>       
+        <dependency>
+            <groupId>org.wildfly.arquillian</groupId>
+            <artifactId>wildfly-arquillian-container-managed</artifactId>
+            <scope>test</scope>
+            <version>2.2.0.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-embedded</artifactId>
+            <version>11.1.1.Final</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -346,8 +337,7 @@ language governing permissions and limitations under the License. -->
 
     <profiles>
         <profile>
-            <!-- All the modules that require nothing but JBoss Enterprise Application 
-            Platform or JBoss EAP -->
+            <!-- All the modules that require nothing but Wildfly -->
             <id>default</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -355,24 +345,52 @@ language governing permissions and limitations under the License. -->
         </profile>
 
         <profile>
-            <!-- An optional Arquillian testing profile that executes tests in your 
-            JBoss EAP instance. This profile will start a new JBoss EAP instance, and 
-            execute the test, shutting it down when done. Run with: mvn clean verify 
-            -Parq-managed -->
+            <!-- An optional Arquillian testing profile -->
             <id>arq-managed</id>
             <dependencies>
                 <dependency>
                     <groupId>org.wildfly.arquillian</groupId>
                     <artifactId>wildfly-arquillian-container-managed</artifactId>
-                    <scope>test</scope>
+                    <version>2.2.0.Final</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.wildfly.core</groupId>
+                    <artifactId>wildfly-embedded</artifactId>
+                    <version>11.1.1.Final</version>
                 </dependency>
             </dependencies>
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>2.8</version>
+                        <executions>
+                            <execution>
+                                <id>unpack</id>
+                                <phase>process-test-classes</phase>
+                                <goals>
+                                    <goal>unpack</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.wildfly</groupId>
+                                            <artifactId>wildfly-dist</artifactId>
+                                            <version>${version-org.wildfly}</version>
+                                            <type>zip</type>
+                                            <overWrite>false</overWrite>
+                                            <outputDirectory>target</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${version.failsafe.plugin}</version>
+                        <version>${version-org.apache.maven.surefire.plugin}</version>
                         <executions>
                             <execution>
                                 <goals>
@@ -386,7 +404,11 @@ language governing permissions and limitations under the License. -->
                             <systemPropertyVariables>
                                 <!-- Defines the container qualifier in "arquillian.xml" -->
                                 <arquillian.launch>managed</arquillian.launch>
+                                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>     
+                                <jboss.home>${project.basedir}/target/wildfly-8.2.0.Final</jboss.home>
+                                <module.path>${project.basedir}/target/wildfly-8.2.0.Final/modules</module.path>                                    
                             </systemPropertyVariables>
+                            <redirectTestOutputToFile>false</redirectTestOutputToFile>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -400,7 +422,7 @@ language governing permissions and limitations under the License. -->
             <dependencies>
                 <dependency>
                     <groupId>org.wildfly.arquillian</groupId>
-                    <artifactId>wildfly-arquillian-container-remote</artifactId>
+                    <artifactId>wildfly-arquillian-container-domain-managed</artifactId>
                     <scope>test</scope>
                 </dependency>
             </dependencies>
