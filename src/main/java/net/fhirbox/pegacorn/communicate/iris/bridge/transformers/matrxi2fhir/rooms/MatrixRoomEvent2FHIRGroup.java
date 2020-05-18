@@ -46,9 +46,9 @@ import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
 import net.fhirbox.pegacorn.communicate.iris.common.Exceptions.MinorTransformationException;
 import net.fhirbox.pegacorn.communicate.iris.bridge.transformers.matrxi2fhir.common.MatrixAttribute2FHIRIdentifierBuilders;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
-import net.fhirbox.pegacorn.fhir.r4.model.GroupPER;
-import net.fhirbox.pegacorn.fhir.r4.model.helpers.GroupJoinRuleStatusEnum;
-import net.fhirbox.pegacorn.fhir.r4.model.helpers.IdentifierExtensionMeanings;
+import net.fhirbox.pegacorn.fhir.r4.model.common.GroupPC;
+import net.fhirbox.pegacorn.fhir.r4.model.common.helpers.GroupJoinRuleStatusEnum;
+import net.fhirbox.pegacorn.fhir.r4.model.common.helpers.IdentifierExtensionMeanings;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.MessageHeader;
@@ -75,7 +75,7 @@ public class MatrixRoomEvent2FHIRGroup
     {
         LOG.debug(".matrixRoomCreateEvent2FHIRGroupBundle(): Message In --> " + theMessage);
         Bundle newBundleElement = new Bundle();
-        GroupPER groupElement = new GroupPER();
+        GroupPC groupElement = new GroupPC();
         MessageHeader messageHeader = new MessageHeader();
         LOG.trace(".matrixRoomCreateEvent2FHIRGroupBundle(): Message to be converted --> " + theMessage);
         try {
@@ -119,16 +119,16 @@ public class MatrixRoomEvent2FHIRGroup
         return (messageHeaderElement);
     }
 
-    public GroupPER roomCreateEvent2Group(String theMessage) throws MinorTransformationException
+    public GroupPC roomCreateEvent2Group(String theMessage) throws MinorTransformationException
     {
         LOG.debug(".doTransform(): Message In --> " + theMessage);
-        GroupPER localGroupElement = new GroupPER();
+        GroupPC localGroupElement = new GroupPC();
         LOG.trace("Message to be converted --> " + theMessage);
         try {
             JSONObject roomStatusEvent = new JSONObject(theMessage);
             localGroupElement = buildFHIRGroupFromMatrixRoomEvent(roomStatusEvent);
         } catch (Exception Ex) {
-            GroupPER emptyGroup = new GroupPER();
+            GroupPC emptyGroup = new GroupPC();
             return (emptyGroup);
         }
         return (localGroupElement);
@@ -143,11 +143,11 @@ public class MatrixRoomEvent2FHIRGroup
      * @return Communication A FHIR::Communication resource (see
      * https://www.hl7.org/fhir/group.html)
      */
-    private GroupPER buildFHIRGroupFromMatrixRoomEvent(JSONObject roomEvent)
+    private GroupPC buildFHIRGroupFromMatrixRoomEvent(JSONObject roomEvent)
     {
         LOG.debug(".buildDefaultGroupElement() for Event --> " + roomEvent);
         // Create the empty Pegacorn::FHIR::R4::Group entity.
-        GroupPER theTargetGroup = new GroupPER();
+        GroupPC theTargetGroup = new GroupPC();
         // Add the FHIR::Group.Identifier (type = FHIR::Identifier) Set
         theTargetGroup.addIdentifier(this.groupAttributeBuilders.buildGroupIdentifier(roomEvent.getString("room_id")));
         // Set the group type --> PRACTITIONER (all our groups are based on Practitioners)

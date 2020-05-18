@@ -14,7 +14,7 @@ import net.fhirbox.pegacorn.communicate.iris.bridge.transformers.common.keyident
 import net.fhirbox.pegacorn.communicate.iris.bridge.transformers.matrxi2fhir.common.MatrixAttribute2FHIRIdentifierBuilders;
 import net.fhirbox.pegacorn.deploymentproperties.CommunicateProperties;
 import net.fhirbox.pegacorn.referencevalues.PegacornSystemReference;
-import net.fhirbox.pegacorn.fhir.r4.model.GroupPER;
+import net.fhirbox.pegacorn.fhir.r4.model.common.GroupPC;
 import org.hl7.fhir.r4.model.BooleanType;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Coding;
@@ -58,7 +58,7 @@ public class RoomInfoName2Group {
     public Bundle matrixRoomNameEvent2FHIRGroupBundle(String theMessage) throws MinorTransformationException {
         Bundle newBundleElement = new Bundle();
         LOG.debug(".matrixRoomNameEvent2FHIRGroupBundle(): Message In --> " + theMessage);
-        GroupPER groupElement = new GroupPER();
+        GroupPC groupElement = new GroupPC();
         MessageHeader messageHeader = new MessageHeader();
         LOG.trace(".matrixRoomNameEvent2FHIRGroupBundle(): Message to be converted --> " + theMessage);
         try {
@@ -94,15 +94,15 @@ public class RoomInfoName2Group {
         return (messageHeaderElement);
     }
 
-    public GroupPER roomInfoNameEvent2Group(String theMessage) throws MinorTransformationException {
+    public GroupPC roomInfoNameEvent2Group(String theMessage) throws MinorTransformationException {
         LOG.debug(".roomInfoNameEvent2Group(): Message In --> " + theMessage);
-        GroupPER newGroup;
+        GroupPC newGroup;
         LOG.trace(".roomInfoNameEvent2Group(): Message to be converted --> " + theMessage);
         try {
             JSONObject roomStatusEvent = new JSONObject(theMessage);
             newGroup = buildGroupEntityFromRoomNameEvent(roomStatusEvent);
         } catch (Exception Ex) {
-            GroupPER emptyGroup = new GroupPER();
+            GroupPC emptyGroup = new GroupPC();
             return (emptyGroup);
         }
         return (newGroup);
@@ -117,7 +117,7 @@ public class RoomInfoName2Group {
      * @return Communication A FHIR::Communication resource (see
      * https://www.hl7.org/fhir/group.html)
      */
-    private GroupPER buildGroupEntityFromRoomNameEvent(JSONObject pRoomServerEvent) throws MinorTransformationException{
+    private GroupPC buildGroupEntityFromRoomNameEvent(JSONObject pRoomServerEvent) throws MinorTransformationException{
         LOG.debug(".buildGroupEntityFromRoomNameEvent() for Event --> " + pRoomServerEvent);
         if( !pRoomServerEvent.has("content") ){
             throw(new MinorTransformationException("m.room.name event has no -content-"));
@@ -127,7 +127,7 @@ public class RoomInfoName2Group {
             throw(new MinorTransformationException("m.room.name event has no -name-"));
         }
         // Create the empty FHIR::Group entity.
-        GroupPER newGroup = new GroupPER();
+        GroupPC newGroup = new GroupPC();
         // Add the FHIR::Group.Identifier (type = FHIR::Identifier) Set
         newGroup.addIdentifier(this.buildGroupIdentifier(pRoomServerEvent));
         Extension localRoomPriorityValue = new Extension();
