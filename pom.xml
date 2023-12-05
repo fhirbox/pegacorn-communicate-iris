@@ -268,7 +268,7 @@ language governing permissions and limitations under the License. -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.2.3</version>
+            <version>1.2.13</version>
         </dependency>
       
         <!-- Testing --> 
